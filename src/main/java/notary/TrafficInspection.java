@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 
-public class TrafficInspection implements Inspection {
+class TrafficInspection implements Inspection {
     private final List<Traffic> artifacts = new LinkedList<>();
 
     @Override
@@ -37,9 +37,9 @@ public class TrafficInspection implements Inspection {
     public Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) throws InspectionException {
         try {
             String file = getInspection() + "." + visitType.name() + ".har";
-            Traffic traffic = new Traffic(file, "application/json");
+            final Traffic traffic = new Traffic(file, "application/json");
             this.artifacts.add(traffic);
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            final ByteArrayOutputStream stream = new ByteArrayOutputStream();
             proxy.getHar().writeTo(stream);
             return ImmutableMap.of(file, stream.toByteArray());
         } catch (IOException e) {

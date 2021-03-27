@@ -4,14 +4,13 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 
-import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public final class SummaryBuilder extends Builder {
+class SummaryBuilder extends Builder {
     public enum Language {
         en
     }
@@ -37,10 +36,10 @@ public final class SummaryBuilder extends Builder {
     }
 
     @Override
-    public String build() throws IOException {
-        this.ctx.setVariable("name", this.name);
-        this.ctx.setVariable("version", this.version);
-        this.ctx.setVariable("vendor", this.vendor);
+    public String build() {
+        this.ctx.setVariable("title", Main.APP_TITLE);
+        this.ctx.setVariable("version", Main.APP_VERSION);
+        this.ctx.setVariable("vendor", Main.APP_VENDOR);
         this.ctx.setVariable("visits", this.visits);
         this.ctx.setVariable("deviceType", !this.visits.isEmpty() ? this.visits.get(0).getDeviceType() : null);
         this.ctx.setVariable("url", !this.visits.isEmpty() ? this.visits.get(0).getUrl() : null);
@@ -49,12 +48,12 @@ public final class SummaryBuilder extends Builder {
         this.ctx.setVariable("platformName", !this.visits.isEmpty() ? this.visits.get(0).getPlatformName() : null);
         this.ctx.setVariable("browserVersion", !this.visits.isEmpty() ? this.visits.get(0).getBrowserVersion() : null);
 
-        ClassLoaderTemplateResolver resolver = new ClassLoaderTemplateResolver();
-        TemplateEngine templateEngine = new TemplateEngine();
+        final ClassLoaderTemplateResolver resolver = new ClassLoaderTemplateResolver();
+        final TemplateEngine templateEngine = new TemplateEngine();
         templateEngine.setTemplateResolver(resolver);
 
-        Writer writer = new StringWriter();
-        templateEngine.process("/reports/" + this.language.name() + ".html", this.ctx, writer);
+        final Writer writer = new StringWriter();
+        templateEngine.process("/templates/" + this.language.name() + ".html", this.ctx, writer);
         return writer.toString();
     }
 }

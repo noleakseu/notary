@@ -8,19 +8,20 @@ import net.lightbody.bmp.BrowserMobProxyServer;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.openqa.selenium.chrome.ChromeDriver;
 
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class EtagInspection implements Inspection {
+class EtagInspection implements Inspection {
     private static final String HEADER = "ETag";
     private final List<Etag> firstParty = new LinkedList<>();
     private final List<Etag> thirdParty = new LinkedList<>();
     private final Multimap<String, Map<String, String>> anyParty = ArrayListMultimap.create();  // url, etag, sha1
     private URL source;
-    private List<TlsCertificate> sourcePath;
 
     @Override
     public String getInspection() {
@@ -30,7 +31,6 @@ public class EtagInspection implements Inspection {
     @Override
     public void beforeLoad(BrowserMobProxyServer proxy, URL url) {
         this.source = url;
-        this.sourcePath = Main.getCertificatePath(url, NtpClock.getInstance().instant());
         proxy.addResponseFilter((server, contents, messageInfo) -> {
             if (server.headers().contains(HEADER)) {
                 this.anyParty.put(
@@ -48,10 +48,14 @@ public class EtagInspection implements Inspection {
     @Override
     public Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) throws InspectionException {
         try {
+            Instant now = NtpClock.getInstance().instant();
+            List<TlsCertificate> sourcePath = Main.getCertificatePath(this.source, now);
             for (Map.Entry<String, Map<String, String>> party : this.anyParty.entries()) {
-                URL targetUrl = new URL(party.getKey());
-                List<TlsCertificate> targetPath = Main.getCertificatePath(targetUrl, NtpClock.getInstance().instant());
-                if (Main.isFirstParty(this.source, targetUrl, null != this.sourcePath ? this.sourcePath.get(0) : null, null != targetPath ? targetPath.get(0) : null)) {
+                final URL targetUrl = new URL(party.getKey());
+                List<TlsCertificate> targetPath = Main.getCertificatePath(targetUrl, now);
+                InetAddress targetIp = proxy.getHostNameResolver().resolve(targetUrl.getHost()).iterator().next();
+                InetAddress sourceIp = proxy.getHostNameResolver().resolve(this.source.getHost()).iterator().next();
+                if (Main.isFirstParty(this.source, sourceIp, targetUrl, targetIp, !sourcePath.isEmpty() ? sourcePath.get(0) : null, !targetPath.isEmpty() ? targetPath.get(0) : null)) {
                     Main.distinctEtags(this.firstParty, new Etag(party.getKey(), party.getValue()));
                 } else {
                     Main.distinctEtags(this.thirdParty, new Etag(party.getKey(), party.getValue()));

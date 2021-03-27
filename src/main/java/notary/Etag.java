@@ -8,7 +8,7 @@ import java.util.Map;
 /**
  * RFC7232
  */
-public class Etag {
+class Etag {
     private final String resource;
     private String value;
     private String contentHash;

@@ -9,7 +9,7 @@ import java.util.Date;
 /**
  * RFC5280
  */
-public class TlsCertificate {
+class TlsCertificate {
     private final String type;
     private final Boolean valid;
     private final String issuer;

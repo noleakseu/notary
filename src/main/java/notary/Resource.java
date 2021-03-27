@@ -7,7 +7,7 @@ import java.net.URL;
 /**
  * RFC1945
  */
-public class Resource {
+class Resource {
     private final URL url;
     private final String ip;
 

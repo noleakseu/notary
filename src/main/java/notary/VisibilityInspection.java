@@ -12,7 +12,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class VisibilityInspection implements Inspection {
+class VisibilityInspection implements Inspection {
     private byte[] screenshot;
     private final List<Visibility> artifacts = new LinkedList<>();
 

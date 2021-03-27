@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <title>Status</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            vertical-align: baseline;
+            box-sizing: border-box;
+        }
+
+        body {
+            height: 100vh;
+            font-family: monospace;
+            font-size: 17px;
+            line-height: 2;
+        }
+
+        th {
+            text-align: left;
+            font-weight: normal;
+        }
+
+        td {
+            text-align: right;
+            font-weight: normal;
+        }
+
+        tr {
+            border-bottom: dashed 1px gray;
+        }
+
+        table {
+            border: 0;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        div {
+            width: 50vw;
+            position: relative;
+            top: 25vw;
+            height: 25vw;
+            transform: translateY(-50%);
+            margin: 0 auto;
+            padding: 30px 30px 30px;
+            box-shadow: 0 0 150px -20px gray;
+        }
+    </style>
+</head>
+<body>
+<div>
+    <table>
+        <tr>
+            <th>Title</th>
+            <td th:text="${title}">Notary</td>
+        </tr>
+        <tr>
+            <th>Version</th>
+            <td th:text="${version}">1.1.1</td>
+        </tr>
+        <tr>
+            <th>Vendor</th>
+            <td th:text="${vendor}">NoLeaks</td>
+        </tr>
+        <tr>
+            <th>Java vendor</th>
+            <td th:text="${javaVendor}">Ubuntu</td>
+        </tr>
+        <tr>
+            <th>Java version</th>
+            <td th:text="${javaVersion}">1.11</td>
+        </tr>
+        <tr>
+            <th>OS name</th>
+            <td th:text="${osName}">Ubuntu</td>
+        </tr>
+        <tr>
+            <th>OS version</th>
+            <td th:text="${osVersion}">20.0</td>
+        </tr>
+        <tr>
+            <th>NTP</th>
+            <td th:text="${ntp}">Cloudflare</td>
+        </tr>
+        <tr>
+            <th>DNS</th>
+            <td th:text="${dns}">Cloudflare</td>
+        </tr>
+        <tr>
+            <th>TSA</th>
+            <td th:text="${tsa}">GlobalSign</td>
+        </tr>
+    </table>
+</div>
+</body>
+</html>

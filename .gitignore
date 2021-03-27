@@ -1,7 +1,10 @@
-*.log
-*.zip
 .idea/
 target/
 tmp/
 bin/
-notary.p12
+assets/
+*.p12
+*.pfx
+*.pem
+*.log
+*.zip

@@ -14,20 +14,22 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * RFC8484
  */
-final public class DnsOverHttpsResolver extends NativeResolver {
+class DnsOverHttpsResolver extends NativeResolver {
+    private static final int TIMEOUT = 2000;
     private static final ConcurrentHashMap<String, Collection<InetAddress>> cache = new ConcurrentHashMap<>();
-    private static final DohResolver resolver = new DohResolver(
-            "https://cloudflare-dns.com/dns-query",
-            1,
-            Duration.ofSeconds(1)
-    );
+    private static final DohResolver resolver = new DohResolver(Main.APP_DNS, 1, Duration.ofMillis(TIMEOUT));
 
-    /**
-     * @param hostName Host
-     * @return First resolved IP address
-     * @throws UnknownHostException Exception
-     */
-    public static InetAddress resolveHostName(String hostName) throws UnknownHostException {
+    @Override
+    public Collection<InetAddress> resolveRemapped(String host) {
+        try {
+            cache.putIfAbsent(host, Collections.singletonList(resolveHostName(host)));
+            return cache.get(host);
+        } catch (UnknownHostException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    static InetAddress resolveHostName(String hostName) throws UnknownHostException {
         try {
             final Message response = resolver.send(
                     Message.newQuery(
@@ -46,15 +48,5 @@ final public class DnsOverHttpsResolver extends NativeResolver {
             throw new UnknownHostException(e.toString());
         }
         throw new UnknownHostException("Unknown host " + hostName);
-    }
-
-    @Override
-    public Collection<InetAddress> resolveRemapped(String host) {
-        try {
-            cache.putIfAbsent(host, Collections.singletonList(resolveHostName(host)));
-            return cache.get(host);
-        } catch (UnknownHostException e) {
-            return Collections.emptyList();
-        }
     }
 }

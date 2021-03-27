@@ -2,7 +2,7 @@ package notary;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
-public class Visibility {
+class Visibility {
     private final String file;
     private final String type;
 

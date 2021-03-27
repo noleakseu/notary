@@ -8,18 +8,19 @@ import org.apache.http.cookie.MalformedCookieException;
 import org.apache.http.cookie.SM;
 import org.openqa.selenium.chrome.ChromeDriver;
 
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class CookieInspection implements Inspection {
+class CookieInspection implements Inspection {
     private final List<Cookie> firstParty = new LinkedList<>();
     private final List<Cookie> thirdParty = new LinkedList<>();
     private final Multimap<String, String> anyParty = ArrayListMultimap.create();
     private URL source;
-    private List<TlsCertificate> sourcePath;
 
     @Override
     public String getInspection() {
@@ -29,7 +30,6 @@ public class CookieInspection implements Inspection {
     @Override
     public void beforeLoad(BrowserMobProxyServer proxy, URL url) {
         this.source = url;
-        this.sourcePath = Main.getCertificatePath(url, NtpClock.getInstance().instant());
         proxy.addResponseFilter((server, contents, messageInfo) -> {
             if (server.headers().contains(SM.SET_COOKIE)) {
                 this.anyParty.put(messageInfo.getOriginalUrl(), server.headers().get(SM.SET_COOKIE));
@@ -47,10 +47,14 @@ public class CookieInspection implements Inspection {
     @Override
     public Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) throws InspectionException {
         try {
+            Instant now = NtpClock.getInstance().instant();
+            List<TlsCertificate> sourcePath = Main.getCertificatePath(this.source, now);
             for (Map.Entry<String, String> party : this.anyParty.entries()) {
-                URL targetUrl = new URL(party.getKey());
-                List<TlsCertificate> targetPath = Main.getCertificatePath(targetUrl, NtpClock.getInstance().instant());
-                if (Main.isFirstParty(this.source, targetUrl, null != this.sourcePath ? this.sourcePath.get(0) : null, null != targetPath ? targetPath.get(0) : null)) {
+                final URL targetUrl = new URL(party.getKey());
+                List<TlsCertificate> targetPath = Main.getCertificatePath(targetUrl, now);
+                InetAddress targetIp = proxy.getHostNameResolver().resolve(targetUrl.getHost()).iterator().next();
+                InetAddress sourceIp = proxy.getHostNameResolver().resolve(this.source.getHost()).iterator().next();
+                if (Main.isFirstParty(this.source, sourceIp, targetUrl, targetIp, !sourcePath.isEmpty() ? sourcePath.get(0) : null, !targetPath.isEmpty() ? targetPath.get(0) : null)) {
                     Main.distinctCookies(this.firstParty, Main.parseCookieValue(targetUrl, party.getValue()));
                 } else {
                     Main.distinctCookies(this.thirdParty, Main.parseCookieValue(targetUrl, party.getValue()));

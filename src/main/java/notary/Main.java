@@ -1,5 +1,6 @@
 package notary;
 
+import com.google.common.net.InternetDomainName;
 import io.javalin.Javalin;
 import io.javalin.http.util.RateLimit;
 import jdk.security.jarsigner.JarSigner;
@@ -13,22 +14,25 @@ import org.apache.http.cookie.SM;
 import org.apache.http.impl.cookie.DefaultCookieSpec;
 import org.apache.http.impl.cookie.RFC6265LaxSpec;
 import org.apache.http.message.BasicHeader;
-
-import java.io.*;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 
 import javax.annotation.Nullable;
 import javax.net.ssl.HttpsURLConnection;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableEntryException;
-import java.security.cert.*;
+import java.nio.file.attribute.FileTime;
+import java.security.*;
 import java.security.cert.Certificate;
+import java.security.cert.*;
 import java.time.Instant;
 import java.util.Date;
 import java.util.LinkedList;
@@ -39,36 +43,42 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-public class Main {
+class Main {
     private static final long VISIT_DURATION_SEC = 5;
-    private static final int DAILY_LIMIT = 1;
+    private static final int DAILY_LIMIT = 100;
 
     private static final String SNAPSHOT_NAME = "snapshot.zip";
-    private static final String SCHEMA_NAME = "schema.json";
+    static final String SCHEMA_NAME = "schema.json";
     private static final String META_NAME = "meta.json";
     private static final String SUMMARY_NAME = "summary.html";
 
     public static final String DRIVER_FILE = "bin/chromedriver";
     public static final String CHROME_FILE = "bin/chrome-linux/chrome";
 
-    public static final String ARG_URL = "url";
-    public static final String ARG_LANGUAGE = "language";
-    public static final String ARG_DEVICE = "device";
-    public static final String ARG_KEYSTORE = "keystore";
-    public static final String ARG_ALIAS = "alias";
-    public static final String ARG_STOREPASS = "storepass";
+    private static final String ARG_URL = "url";
+    private static final String ARG_LANGUAGE = "language";
+    private static final String ARG_DEVICE = "device";
+    private static final String ARG_KEYSTORE = "keystore";
+    private static final String ARG_ALIAS = "alias";
+    private static final String ARG_STOREPASS = "storepass";
+
+    static final String APP_TITLE = Main.class.getPackage().getImplementationTitle();
+    static final String APP_VERSION = Main.class.getPackage().getImplementationVersion();
+    static final String APP_VENDOR = Main.class.getPackage().getImplementationVendor();
+    public static final String APP_HOST = "0.0.0.0";
+    public static final int APP_PORT = 8000;
+    public static final String APP_NTP = "time.cloudflare.com";
+    public static final String APP_DNS = "https://cloudflare-dns.com/dns-query";
+    public static final String APP_TSA = "http://rfc3161timestamp.globalsign.com/advanced";
 
     /**
      * Entry point
      */
     public static void main(String[] args) {
-        String name = Main.class.getPackage().getImplementationTitle();
-        String version = Main.class.getPackage().getImplementationVersion();
-        String vendor = Main.class.getPackage().getImplementationVendor();
-
-        ArgumentParser parser = ArgumentParsers.newFor(name.toLowerCase()).build()
+        // args
+        ArgumentParser parser = ArgumentParsers.newFor("notary.jar").build()
                 .defaultHelp(true)
-                .description("" + name + " " + version + " by " + vendor);
+                .description("" + APP_TITLE + " " + APP_VERSION + " by " + APP_VENDOR);
         parser.addArgument("-k", "--keystore")
                 .required(true)
                 .help("Specify P12 keystore");
@@ -89,7 +99,6 @@ public class Main {
         parser.addArgument("-u", "--url")
                 .setDefault("")
                 .help("Specify URL (CLI mode only)");
-
         try {
             Namespace ns = parser.parseArgs(args);
 
@@ -104,17 +113,33 @@ public class Main {
             }
 
             // create signer
-            JarSigner signer = new JarSigner.Builder(
-                    (KeyStore.PrivateKeyEntry) KeyStore
-                            .getInstance(new File(ns.getString(ARG_KEYSTORE)), ns.getString(ARG_STOREPASS).toCharArray())
+            final KeyStore keyStore = KeyStore.getInstance(new File(ns.getString(ARG_KEYSTORE)), ns.getString(ARG_STOREPASS).toCharArray());
+            final JarSigner signer = new JarSigner.Builder(
+                    (KeyStore.PrivateKeyEntry) keyStore
                             .getEntry(ns.getString(ARG_ALIAS), new KeyStore.PasswordProtection(ns.getString(ARG_STOREPASS).toCharArray()))
-            ).build();
+            ).tsa(new URI(APP_TSA)).build();
 
             if (ns.get("url").equals("")) {
                 // API mode
-                Javalin app = Javalin.create();
-                Runtime.getRuntime().addShutdownHook(new Thread(app::stop));
+                Javalin app = Javalin.create(
+                        config -> {
+                            config.enableCorsForAllOrigins();
+                            config.showJavalinBanner = false;
+                        }
+                );
+                app.after("/", ctx -> {
+                    ctx.res.setHeader("Server", "" + APP_TITLE + " " + APP_VERSION);
+                    ctx.res.setDateHeader("Date", NtpClock.getInstance().instant().toEpochMilli());
+                });
                 app.get("/", ctx -> {
+                    // status
+                    if (ctx.queryParamMap().isEmpty()) {
+                        ctx.res.addHeader("Content-Type", "text/html; charset=UTF-8");
+                        status(ctx.res.getOutputStream());
+                        return;
+                    }
+
+                    // snapshot
                     new RateLimit(ctx).requestPerTimeUnit(DAILY_LIMIT, TimeUnit.DAYS);
                     ctx.res.addHeader("Content-Type", "application/zip");
                     ctx.res.addHeader("Content-Disposition", "attachment; filename=\"" + SNAPSHOT_NAME + "\"");
@@ -130,7 +155,9 @@ public class Main {
                     );
                     signer.sign(new ZipFile(zip), ctx.res.getOutputStream());
                     zip.delete();
-                }).start("127.0.0.1", 8000);
+                });
+                Runtime.getRuntime().addShutdownHook(new Thread(app::stop));
+                app.start(APP_HOST, APP_PORT);
             } else {
                 // CLI mode
                 File zip = Files.createTempFile("zip-", ".tmp").toFile();
@@ -147,7 +174,7 @@ public class Main {
         } catch (ArgumentParserException e) {
             parser.handleError(e);
             System.exit(1);
-        } catch (InterruptedException | IOException | InspectionException | CertificateException | NoSuchAlgorithmException | KeyStoreException | UnrecoverableEntryException e) {
+        } catch (InterruptedException | URISyntaxException | IOException | InspectionException | CertificateException | NoSuchAlgorithmException | KeyStoreException | UnrecoverableEntryException e) {
             System.err.println(e.getMessage());
             System.exit(1);
         }
@@ -157,20 +184,20 @@ public class Main {
      * Snapshot generator
      */
     public static void snapshot(URL url, Device.Type deviceType, SummaryBuilder.Language language, OutputStream stream) throws IOException, InspectionException, InterruptedException {
-        try (ZipOutputStream zipOutputStream = new ZipOutputStream(stream)) {
+        try (final ZipOutputStream zipOutputStream = new ZipOutputStream(stream)) {
             // init documentation
-            Builder jsonMeta = new MetaBuilder();
-            Builder jsonSchema = new SchemaBuilder();
-            //Builder summary = new SummaryBuilder(language);
+            final Builder jsonMeta = new MetaBuilder();
+            final Builder jsonSchema = new SchemaBuilder();
+            //final Builder summary = new SummaryBuilder(language);
 
             // init inspections
-            Inspection visibility = new VisibilityInspection();
-            Inspection modality = new ModalityInspection();
-            Inspection resources = new ResourcesInspection();
-            Inspection tlsCertificate = new TlsCertificateInspection();
-            Inspection traffic = new TrafficInspection();
-            Inspection cookie = new CookieInspection();
-            Inspection etag = new EtagInspection();
+            final Inspection visibility = new VisibilityInspection();
+            final Inspection modality = new ModalityInspection();
+            final Inspection resources = new ResourcesInspection();
+            final Inspection tlsCertificate = new TlsCertificateInspection();
+            final Inspection traffic = new TrafficInspection();
+            final Inspection cookie = new CookieInspection();
+            final Inspection etag = new EtagInspection();
 
             // create profile dir
             File userData = Files.createTempDirectory("profile").toFile();
@@ -188,19 +215,19 @@ public class Main {
                             cookie,
                             etag
                     )
-                    .publish(zipOutputStream)
+                    .publish(zipOutputStream, FileTime.from(NtpClock.getInstance().instant()))
                     //.publish(summary)
                     .publish(jsonMeta)
                     .publish(jsonSchema);
             new Visit(userDataDir, deviceType, Visit.Type.Returning, url, VISIT_DURATION_SEC)
                     .inspect(traffic, cookie, etag)
-                    .publish(zipOutputStream)
+                    .publish(zipOutputStream, FileTime.from(NtpClock.getInstance().instant()))
                     //.publish(summary)
                     .publish(jsonMeta)
                     .publish(jsonSchema);
             new Visit(userDataDir, deviceType, Visit.Type.Incognito, url, VISIT_DURATION_SEC)
                     .inspect(traffic, cookie, etag)
-                    .publish(zipOutputStream)
+                    .publish(zipOutputStream, FileTime.from(NtpClock.getInstance().instant()))
                     //.publish(summary)
                     .publish(jsonMeta)
                     .publish(jsonSchema);
@@ -209,6 +236,7 @@ public class Main {
             userData.delete();
 
             // add documentation
+            Instant now = NtpClock.getInstance().instant();
 /*            summary
                     .append(
                             visibility,
@@ -230,7 +258,7 @@ public class Main {
                             cookie,
                             etag
                     )
-                    .build(zipOutputStream, SCHEMA_NAME);
+                    .build(zipOutputStream, SCHEMA_NAME, FileTime.from(now));
             jsonMeta
                     .append(
                             visibility,
@@ -241,7 +269,7 @@ public class Main {
                             cookie,
                             etag
                     )
-                    .build(zipOutputStream, META_NAME);
+                    .build(zipOutputStream, META_NAME, FileTime.from(now));
 
         }
     }
@@ -307,17 +335,22 @@ public class Main {
      * Match source and target URL
      *
      * @param source            Source URL
+     * @param sourceIp          Source IP
      * @param target            Target URL
+     * @param targetIp          Target IP
      * @param sourceCertificate Source TLS Certificate, if any
      * @param targetCertificate Target TLS Certificate, if any
      * @return True or false
      */
-    public static boolean isFirstParty(URL source, URL target, @Nullable TlsCertificate sourceCertificate, @Nullable TlsCertificate targetCertificate) {
-        if (null != sourceCertificate && null != targetCertificate) {
-            return sourceCertificate.getIssuer().equals(targetCertificate.getIssuer()) && sourceCertificate.getSerial().equals(targetCertificate.getSerial());
+    public static boolean isFirstParty(URL source, InetAddress sourceIp, URL target, InetAddress targetIp, @Nullable TlsCertificate sourceCertificate, @Nullable TlsCertificate targetCertificate) {
+        if (source.getHost().equals(target.getHost())) {
+            return true;
         }
-        if (source.getProtocol().equals(target.getProtocol())) {
-            return source.getHost().equals(target.getHost());
+        if (source.getHost().endsWith(InternetDomainName.from(target.getHost()).topPrivateDomain().toString()) || target.getHost().endsWith(InternetDomainName.from(source.getHost()).topPrivateDomain().toString())) {
+            if (null != sourceCertificate && null != targetCertificate && sourceCertificate.getIssuer().equals(targetCertificate.getIssuer()) && sourceCertificate.getSerial().equals(targetCertificate.getSerial())) {
+                return true;
+            }
+            return sourceIp.equals(targetIp);
         }
         return false;
     }
@@ -326,11 +359,10 @@ public class Main {
      * Check validity of the TLS Certificate Path
      *
      * @param path Certificate Path (aka Chain)
-     * @return True, false of unknown
+     * @return True or false
      */
-    public static @Nullable
-    Boolean isCertificatePathValid(@Nullable List<TlsCertificate> path) {
-        Boolean isValid = null;
+    public static boolean isCertificatePathValid(@Nullable List<TlsCertificate> path) {
+        boolean isValid = false;
         if (null != path) {
             for (TlsCertificate certificate : path) {
                 if (null == certificate.isValid()) {
@@ -353,16 +385,18 @@ public class Main {
      * @return TLS Certificate Path
      */
     @SuppressWarnings("WrapperTypeMayBePrimitive")
-    public static @Nullable
-    List<TlsCertificate> getCertificatePath(URL url, Instant instant) {
-        List<TlsCertificate> path = null;
+    public static List<TlsCertificate> getCertificatePath(URL url, Instant instant) {
+        final List<TlsCertificate> path = new LinkedList<>();
         try {
+            System.setProperty("com.sun.net.ssl.checkRevocation", "true");
+            System.setProperty("com.sun.security.enableCRLDP", "true");
+            Security.setProperty("ocsp.enable", "true");
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+            connection.setUseCaches(false);
             connection.connect();
-            path = new LinkedList<>();
             for (Certificate certificate : connection.getServerCertificates()) {
                 if (certificate instanceof X509Certificate) {
-                    Boolean isValid = false;
+                    boolean isValid = false;
                     try {
                         ((X509Certificate) certificate).checkValidity(Date.from(instant));
                         isValid = true;
@@ -392,7 +426,7 @@ public class Main {
      * @throws IOException Exception
      */
     private static void unzip(InputStream stream) throws IOException {
-        try (ZipInputStream zipInputStream = new ZipInputStream(stream)) {
+        try (final ZipInputStream zipInputStream = new ZipInputStream(stream)) {
             Path targetDir = Paths.get("bin");
             ZipEntry zipEntry = zipInputStream.getNextEntry();
             while (null != zipEntry) {
@@ -414,5 +448,25 @@ public class Main {
             }
             zipInputStream.closeEntry();
         }
+    }
+
+    /**
+     * @param stream Output
+     */
+    private static void status(OutputStream stream) {
+        final Context ctx = new Context();
+        ctx.setVariable("javaVendor", System.getProperty("java.vendor"));
+        ctx.setVariable("javaVersion", System.getProperty("java.version"));
+        ctx.setVariable("osName", System.getProperty("os.name"));
+        ctx.setVariable("osVersion", System.getProperty("os.version"));
+        ctx.setVariable("title", APP_TITLE);
+        ctx.setVariable("version", APP_VERSION);
+        ctx.setVariable("vendor", APP_VENDOR);
+        ctx.setVariable("dns", APP_DNS);
+        ctx.setVariable("ntp", APP_NTP);
+        ctx.setVariable("tsa", APP_TSA);
+        final TemplateEngine templateEngine = new TemplateEngine();
+        templateEngine.setTemplateResolver(new ClassLoaderTemplateResolver());
+        templateEngine.process("/templates/status.html", ctx, new OutputStreamWriter(stream));
     }
 }

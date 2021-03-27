@@ -15,7 +15,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class ModalityInspection implements Inspection {
+class ModalityInspection implements Inspection {
     private static final long PAUSE = 500;
     private final List<Modality> artifacts = new LinkedList<>();
     private byte[] screenshot;
@@ -42,7 +42,7 @@ public class ModalityInspection implements Inspection {
                     .executeScript("return window.pageYOffset")
                     .toString()
             );
-            Actions actions = new Actions(driver);
+            final Actions actions = new Actions(driver);
             actions
                     .keyDown(Keys.CONTROL)
                     .sendKeys(Keys.END)
@@ -60,7 +60,7 @@ public class ModalityInspection implements Inspection {
     @Override
     public Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) {
         String file = getInspection() + "." + visitType.name() + ".png";
-        Modality modality = new Modality(file, "image/png", this.scrollable);
+        final Modality modality = new Modality(file, "image/png", this.scrollable);
         this.artifacts.add(modality);
         return ImmutableMap.of(file, this.screenshot);
     }

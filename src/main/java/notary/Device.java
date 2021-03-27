@@ -3,7 +3,7 @@ package notary;
 /**
  * https://raw.githubusercontent.com/puppeteer/puppeteer/main/src/common/DeviceDescriptors.ts
  */
-final public class Device {
+class Device {
     /**
      * Copyright 2017 Google Inc. All rights reserved.
      * <p>
@@ -68,7 +68,6 @@ final public class Device {
         private final int scaleFactor;
         private final boolean isMobile;
         private final boolean hasTouch;
-        private final boolean isLandscape;
 
         Type(String name, String userAgent, int width, int height, int scaleFactor, boolean isMobile, boolean hasTouch, boolean isLandscape) {
             this.name = name;
@@ -78,7 +77,6 @@ final public class Device {
             this.scaleFactor = scaleFactor;
             this.isMobile = isMobile;
             this.hasTouch = hasTouch;
-            this.isLandscape = isLandscape;
         }
 
         public String getName() {

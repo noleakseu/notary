@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 /**
  * HTTP Archive
  */
-public class Traffic {
+class Traffic {
     private final String file;
     private final String type;
 

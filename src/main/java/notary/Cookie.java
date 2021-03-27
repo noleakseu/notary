@@ -7,7 +7,7 @@ import java.util.Date;
 /**
  * RFC6265
  */
-public class Cookie {
+class Cookie {
     private final String name;
     private final String value;
     private final String domain;

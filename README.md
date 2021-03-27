@@ -3,9 +3,45 @@ NoLeaks Notary is a tool that takes digitally signed snapshots of web-pages for 
 
 ## Key features
 - Integrated Chromium browser and WebDriver ver.89.
-- Trusted domain names (DNS-over-HTTPS).
-- SHA3-256 signatures.
+- Digital signatures according to [NIST](https://csrc.nist.gov/Projects/Hash-Functions/NIST-Policy-on-Hash-Functions).
+  <details>
+  NoLeaks Notary signs all files included in the snapshot with SHA3-256 Secure Hash.
+  Digital signatures can be independently verified by <a href="https://docs.oracle.com/en/java/javase/11/tools/jarsigner.html">Oracle's jarsigner</a> tool:
+  <pre>
+  $ jarsigner -verify snapshot.zip
+  </pre>
+  </details>
+- Trusted timestamp by GlobalSign.
+  <details>
+  NoLeaks Notary protects integrity of the snapshot by using an independent Time Stamp Authority.
+  The timestamp can be verified by <a href="https://docs.oracle.com/en/java/javase/11/tools/jarsigner.html">Oracle's jarsigner</a> tool:
+  <pre>
+  $ jarsigner -verify snapshot.zip
+  </pre>
+  </details>
+- Trusted domain names by Cloudflare.
+  <details>
+  NoLeaks Notary performs encrypted Domain Name System resolution by using DNS-over-HTTPS protocol. 
+  This protocol prevents manipulation of data or misconfiguration of the resolver on client side.
+  </details>
+- Trusted clock source by Cloudflare.
+  <details>
+  NoLeaks Notary performs timestamping by using Network Time Protocol that prevents 
+  misconfiguration of clock on client side.
+  </details>
 - Strict third-party matching.
+  <details>
+  Distinction of the remote parties is a common problem for client-side traffic analysers.
+  Nowadays webmasters widely use cloud infrastructure that may associate
+  one domain name with many IP addresses, pointing each address to many geographically
+  distributed processing facilities. There is no way to unambiguously identify respective 
+  data controller behind an HTTP request. NoLeaks Notary considers two requests belong to the same party if:
+  <pre>
+  - both domain names equal, or
+  - a sub-domain points to the domain's TLS certificate, or
+  - a sub-domain points to the domain's IP address.
+  </pre>
+  </details>
 
 ## Snapshot includes
 - Web-page inspections:
@@ -33,7 +69,7 @@ jar verified.
 
 $ java -jar notary.jar -h
 usage: notary [-h] -k KEYSTORE -a ALIAS -s STOREPASS [-d {iPhone,iPadPro,Nexus,Kindle}] [-l {en}] [-u URL]
-Notary 1.7.1-beta by NoLeaks
+Notary 1.7.2-beta by NoLeaks
 named arguments:
   -h, --help             show this help message and exit
   -k KEYSTORE, --keystore KEYSTORE
@@ -50,26 +86,25 @@ named arguments:
 ```
 Create your own X.509 Certificate for snapshots signing.
 ```
-$ keytool -genkeypair -alias notary -keyalg RSA -keysize 2048 -dname "CN=selfsigned" -validity 7 -storetype PKCS12 -keystore notary.p12 -storepass notary
+$ keytool -genkeypair -alias snapshot -keyalg RSA -keysize 2048 -dname "CN=selfsigned" -validity 7 -storetype PKCS12 -keystore snapshot.p12 -storepass snapshot
 ```
 Take a snapshot in CLI:
 ```
-$ java -jar notary.jar --keystore notary.p12 --storepass notary --alias notary --url http://test.noleaks.eu
-$ jarsigner -verify snapshot.zip
+$ java -jar notary.jar --keystore snapshot.p12 --storepass snapshot --alias snapshot --url http://test.noleaks.eu
+$ jarsigner -verbose -verify snapshot.zip
 jar verified.
 ```
-Launch Notary as a service:
+Take a snapshot via API:
 ```
-$ java -jar notary.jar --keystore notary.p12 --storepass notary --alias notary
+$ java -jar notary.jar --keystore snapshot.p12 --storepass snapshot --alias snapshot
 # from another console
 $ wget 'http://127.0.0.1:8000/?url=http%3A%2F%2Ftest.noleaks.eu&device=Kindle&language=en' -O snapshot.zip
-$ jarsigner -verify snapshot.zip
+$ jarsigner -verbose -verify snapshot.zip
 jar verified.
 ```
 
 # Roadmap
-1. Trusted timestamps
-2. Human-readable Evidence Summary in
+1. Human-readable Evidence Summary in
     - Bulgarian
     - Croatian
     - Czech
@@ -94,4 +129,5 @@ jar verified.
     - Slovenian
     - Spanish
     - Swedish
-3. Deploy as a service
+2. Deploy as a service
+3. Replace NTP with NTS

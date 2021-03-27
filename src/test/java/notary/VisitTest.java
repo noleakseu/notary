@@ -9,7 +9,7 @@ public class VisitTest {
 
     @Test
     public void testModalityInspection() throws Exception {
-        ModalityInspection inspection = new ModalityInspection();
+        var inspection = new ModalityInspection();
         Assert.assertFalse(
                 new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("https://noleaks.eu"), 1)
                         .inspect(inspection)
@@ -23,7 +23,7 @@ public class VisitTest {
 
     @Test
     public void testVisibilityInspection() throws Exception {
-        VisibilityInspection inspection = new VisibilityInspection();
+        var inspection = new VisibilityInspection();
         Assert.assertFalse(
                 new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("https://noleaks.eu"), 1)
                         .inspect(inspection)
@@ -36,7 +36,7 @@ public class VisitTest {
 
     @Test
     public void testTlsCertificateInspection() throws Exception {
-        TlsCertificateInspection inspection = new TlsCertificateInspection();
+        var inspection = new TlsCertificateInspection();
         Assert.assertTrue(
                 new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("https://noleaks.eu"), 1)
                         .inspect(inspection)
@@ -49,7 +49,7 @@ public class VisitTest {
 
     @Test
     public void testTrafficInspection() throws Exception {
-        TrafficInspection inspection = new TrafficInspection();
+        var inspection = new TrafficInspection();
         Assert.assertFalse(
                 new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("https://noleaks.eu"), 1)
                         .inspect(inspection)
@@ -62,7 +62,33 @@ public class VisitTest {
 
     @Test
     public void testResourcesInspection() throws Exception {
-        ResourcesInspection inspection = new ResourcesInspection();
+        var inspection = new ResourcesInspection();
+        Assert.assertTrue(
+                new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("http://test.noleaks.eu"), 1)
+                        .inspect(inspection)
+                        .publish()
+                        .isEmpty()
+        );
+        Assert.assertEquals(8, inspection.getFirstParty().size());
+        Assert.assertEquals(1, inspection.getThirdParty().size());
+    }
+
+    @Test
+    public void testCookieInspection() throws Exception {
+        var inspection = new CookieInspection();
+        Assert.assertTrue(
+                new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("http://test.noleaks.eu"), 1)
+                        .inspect(inspection)
+                        .publish()
+                        .isEmpty()
+        );
+        Assert.assertEquals(1, inspection.getFirstParty().size());
+        Assert.assertEquals(0, inspection.getThirdParty().size());
+    }
+
+    @Test
+    public void testEtagInspection() throws Exception {
+        var inspection = new EtagInspection();
         Assert.assertTrue(
                 new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("http://test.noleaks.eu"), 1)
                         .inspect(inspection)
@@ -70,32 +96,6 @@ public class VisitTest {
                         .isEmpty()
         );
         Assert.assertEquals(3, inspection.getFirstParty().size());
-        Assert.assertEquals(6, inspection.getThirdParty().size());
-    }
-
-    @Test
-    public void testCookieInspection() throws Exception {
-        CookieInspection inspection = new CookieInspection();
-        Assert.assertTrue(
-                new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("http://test.noleaks.eu"), 1)
-                        .inspect(inspection)
-                        .publish()
-                        .isEmpty()
-        );
-        Assert.assertEquals(0, inspection.getFirstParty().size());
-        Assert.assertEquals(1, inspection.getThirdParty().size());
-    }
-
-    @Test
-    public void testEtagInspection() throws Exception {
-        EtagInspection inspection = new EtagInspection();
-        Assert.assertTrue(
-                new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("http://test.noleaks.eu"), 1)
-                        .inspect(inspection)
-                        .publish()
-                        .isEmpty()
-        );
-        Assert.assertEquals(2, inspection.getFirstParty().size());
-        Assert.assertEquals(1, inspection.getThirdParty().size());
+        Assert.assertEquals(0, inspection.getThirdParty().size());
     }
 }

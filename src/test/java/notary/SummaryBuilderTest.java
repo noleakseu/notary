@@ -14,24 +14,21 @@ public class SummaryBuilderTest {
 
     @Test
     public void build() throws Exception {
-        Builder report = new SummaryBuilder(SummaryBuilder.Language.en);
-        Whitebox.setInternalState(report, "name", "Notary");
-        Whitebox.setInternalState(report, "version", "1.1.1");
-        Whitebox.setInternalState(report, "vendor", "NoLeaks");
+        var report = new SummaryBuilder(SummaryBuilder.Language.en);
 
-        Visit first = new Visit("tmp", Device.Type.iPhone, Visit.Type.First, new URL("http://noleaks.eu"), 2);
+        var first = new Visit("tmp", Device.Type.iPhone, Visit.Type.First, new URL("http://noleaks.eu"), 2);
         Whitebox.setInternalState(first, "startTime", new Date());
         Whitebox.setInternalState(first, "stopTime", new Date());
         Whitebox.setInternalState(first, "url", new URL("http://noleaks.eu"));
         Whitebox.setInternalState(first, "currentUrl", new URL("https://noleaks.eu/"));
 
-        Visit incognito = new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("http://noleaks.eu"), 2);
+        var incognito = new Visit("tmp", Device.Type.iPhone, Visit.Type.Incognito, new URL("http://noleaks.eu"), 2);
         Whitebox.setInternalState(incognito, "startTime", new Date());
         Whitebox.setInternalState(incognito, "stopTime", new Date());
         Whitebox.setInternalState(first, "url", new URL("http://noleaks.eu"));
         Whitebox.setInternalState(first, "currentUrl", new URL("https://noleaks.eu/"));
 
-        Inspection resources = new ResourcesInspection();
+        var resources = new ResourcesInspection();
         Whitebox.setInternalState(resources, "firstParty", Arrays.asList(
                 new Resource(new URL("https://example.com/styles.css"), InetAddress.getLocalHost().getHostAddress())
         ));
@@ -39,13 +36,13 @@ public class SummaryBuilderTest {
                 new Resource(new URL("https://tracker.example.com/pixel.gif"), InetAddress.getLocalHost().getHostAddress())
         ));
 
-        Inspection tlsCertificate = new TlsCertificateInspection();
+        var tlsCertificate = new TlsCertificateInspection();
         Whitebox.setInternalState(tlsCertificate, "valid", true);
         Whitebox.setInternalState(tlsCertificate, "path", Arrays.asList(
                 new TlsCertificate("X.509", true, "issuer", new BigInteger("1234567890"), new Date())
         ));
 
-        Inspection cookie = new CookieInspection();
+        var cookie = new CookieInspection();
         Whitebox.setInternalState(cookie, "firstParty", Main.parseCookieValue(
                 new URL("https://example.com/ad.js"),
                 "keyF=valuF; path=/; Expires=Sun, 28 Feb 2021 11:48:45 GMT; Secure"
@@ -55,7 +52,7 @@ public class SummaryBuilderTest {
                 "keyT=valueT; path=/; Expires=Sun, 28 Feb 2021 11:48:45 GMT; Secure"
         ));
 
-        Inspection etag = new EtagInspection();
+        var etag = new EtagInspection();
         Whitebox.setInternalState(etag, "firstParty", Arrays.asList(
                 new Etag("https://example.com/pixel.gif", Collections.singletonMap("value", "hash"))
         ));
@@ -63,17 +60,17 @@ public class SummaryBuilderTest {
                 new Etag("https://tracker.example.com/pixel.gif", Collections.singletonMap("value2", "hash2"))
         ));
 
-        Inspection traffic = new TrafficInspection();
+        var traffic = new TrafficInspection();
         Whitebox.setInternalState(traffic, "artifacts", Arrays.asList(
                 new Traffic("traffic.har", "application/json")
         ));
 
-        Inspection visibility = new VisibilityInspection();
+        var visibility = new VisibilityInspection();
         Whitebox.setInternalState(visibility, "artifacts", Arrays.asList(
                 new Visibility("visibility.png", "image/png")
         ));
 
-        Inspection modality = new ModalityInspection();
+        var modality = new ModalityInspection();
         Whitebox.setInternalState(modality, "artifacts", Arrays.asList(
                 new Modality("yes.png", "image/png", true),
                 new Modality("no.png", "image/png", false),

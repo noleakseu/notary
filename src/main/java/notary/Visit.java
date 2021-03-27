@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.io.BaseEncoding;
 import net.lightbody.bmp.BrowserMobProxyServer;
+import org.littleshoot.proxy.HttpFiltersSourceAdapter;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -15,12 +16,13 @@ import org.openqa.selenium.remote.DesiredCapabilities;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URL;
+import java.nio.file.attribute.FileTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-final public class Visit {
+class Visit {
     public enum Type {
         First,
         Returning,
@@ -108,6 +110,8 @@ final public class Visit {
         final ChromeOptions options = new ChromeOptions();
         options.setBinary(Main.CHROME_FILE);
         options.addArguments(
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
                 "--user-data-dir=" + this.userDataDir,
                 "--window-size=" + this.deviceType.getWidth() + "," + this.deviceType.getHeight(),
                 "--disable-default-apps",
@@ -118,7 +122,6 @@ final public class Visit {
                 "--enable-automation",
                 "--disable-account-consistency",
                 "--disable-browser-side-navigation",
-                "--disable-gpu",
                 "--remote-debugging-port=0"
         );
         if (Type.Incognito == this.visitType) {
@@ -127,11 +130,11 @@ final public class Visit {
 
         // https://chromedriver.chromium.org/mobile-emulation
         if (this.deviceType.isMobile()) {
-            Map<String, Object> deviceMetrics = new HashMap<>();
+            final Map<String, Object> deviceMetrics = new HashMap<>();
             deviceMetrics.put("width", this.deviceType.getWidth());
             deviceMetrics.put("height", this.deviceType.getHeight());
             deviceMetrics.put("pixelRatio", this.deviceType.getScaleFactor());
-            Map<String, Object> mobileEmulation = new HashMap<>();
+            final Map<String, Object> mobileEmulation = new HashMap<>();
             mobileEmulation.put("deviceMetrics", deviceMetrics);
             mobileEmulation.put("userAgent", this.deviceType.getUserAgent());
             options.setExperimentalOption("mobileEmulation", mobileEmulation);
@@ -144,9 +147,20 @@ final public class Visit {
         desiredCapabilities.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
 
         final BrowserMobProxyServer proxy = new BrowserMobProxyServer();
+        proxy.addFirstHttpFilterFactory(new HttpFiltersSourceAdapter() {
+            @Override
+            public int getMaximumRequestBufferSizeInBytes() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getMaximumResponseBufferSizeInBytes() {
+                return Integer.MAX_VALUE;
+            }
+        });
         proxy.setHostNameResolver(new DnsOverHttpsResolver());
         proxy.setMitmDisabled(false);
-        proxy.start(0);
+        proxy.start(0, InetAddress.getByName("127.0.0.1"));
 
         final Proxy seleniumProxy = new Proxy();
         final String proxyStr = "localhost:" + proxy.getPort();
@@ -154,7 +168,7 @@ final public class Visit {
         seleniumProxy.setSslProxy(proxyStr);
         desiredCapabilities.setCapability(CapabilityType.PROXY, seleniumProxy);
         options.merge(desiredCapabilities);
-        ChromeDriver driver = new ChromeDriver(options);
+        final ChromeDriver driver = new ChromeDriver(options);
 
         // beforeLoad
         this.browserName = driver.getCapabilities().getBrowserName();
@@ -251,15 +265,18 @@ final public class Visit {
     }
 
     @JsonIgnore
-    public List<Map<String, byte[]>> publish() throws IOException {
+    public List<Map<String, byte[]>> publish() {
         return this.artifacts;
     }
 
     @JsonIgnore
-    public Visit publish(ZipOutputStream zipOutputStream) throws IOException {
+    public Visit publish(ZipOutputStream zipOutputStream, FileTime now) throws IOException {
         for (Map<String, byte[]> artifacts : this.artifacts) {
             for (Map.Entry<String, byte[]> artifact : artifacts.entrySet()) {
-                ZipEntry entry = new ZipEntry(artifact.getKey());
+                final ZipEntry entry = new ZipEntry(artifact.getKey());
+                entry.setCreationTime(now);
+                entry.setLastModifiedTime(now);
+                entry.setLastAccessTime(now);
                 entry.setSize(artifact.getValue().length);
                 zipOutputStream.putNextEntry(entry);
                 zipOutputStream.write(artifact.getValue());

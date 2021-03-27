@@ -7,7 +7,22 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-public final class MetaBuilder extends Builder {
+/**
+ * https://www.jsonschemavalidator.net
+ */
+class MetaBuilder extends Builder {
+    @JsonProperty()
+    private final String $schema = Main.SCHEMA_NAME;
+
+    @JsonProperty()
+    private final String title = Main.APP_TITLE;
+
+    @JsonProperty()
+    private final String version = Main.APP_VERSION;
+
+    @JsonProperty()
+    private final String vendor = Main.APP_VENDOR;
+
     @JsonProperty()
     @JsonPropertyDescription("Inspections")
     private final List<Inspection> inspections = new LinkedList<>();

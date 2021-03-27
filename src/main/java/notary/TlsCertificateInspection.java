@@ -8,8 +8,8 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
-public class TlsCertificateInspection implements Inspection {
-    private Boolean valid = null;
+class TlsCertificateInspection implements Inspection {
+    private boolean valid;
     private List<TlsCertificate> path = null;
 
     @Override
@@ -33,7 +33,7 @@ public class TlsCertificateInspection implements Inspection {
     }
 
     @JsonPropertyDescription("The Certificate has valid certificate path")
-    public Boolean isValid() {
+    public boolean isValid() {
         return this.valid;
     }
 

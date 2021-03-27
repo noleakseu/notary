@@ -3,7 +3,7 @@ package notary;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
-public class Modality {
+class Modality {
     private final String file;
     private final String type;
     private final Boolean scrollable;
