@@ -1,7 +1,7 @@
 package notary;
 
+import com.browserup.bup.BrowserUpProxyServer;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import net.lightbody.bmp.BrowserMobProxyServer;
 import org.openqa.selenium.chrome.ChromeDriver;
 
 import java.net.URL;
@@ -18,7 +18,7 @@ class TlsCertificateInspection implements Inspection {
     }
 
     @Override
-    public void beforeLoad(BrowserMobProxyServer proxy, URL url) {
+    public void beforeLoad(BrowserUpProxyServer proxy, URL url) {
         this.path = Main.getCertificatePath(url, NtpClock.getInstance().instant());
         this.valid = Main.isCertificatePathValid(this.path);
     }
@@ -28,7 +28,7 @@ class TlsCertificateInspection implements Inspection {
     }
 
     @Override
-    public Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) {
+    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) {
         return null;
     }
 

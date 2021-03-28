@@ -1,6 +1,6 @@
 package notary;
 
-import net.lightbody.bmp.proxy.dns.NativeResolver;
+import com.browserup.bup.proxy.dns.NativeResolver;
 import org.xbill.DNS.*;
 
 import java.io.IOException;
@@ -22,7 +22,9 @@ class DnsOverHttpsResolver extends NativeResolver {
     @Override
     public Collection<InetAddress> resolveRemapped(String host) {
         try {
-            cache.putIfAbsent(host, Collections.singletonList(resolveHostName(host)));
+            if (!cache.containsKey(host)) {
+                cache.put(host, Collections.singletonList(resolveHostName(host)));
+            }
             return cache.get(host);
         } catch (UnknownHostException e) {
             return Collections.emptyList();

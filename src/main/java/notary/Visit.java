@@ -1,11 +1,12 @@
 package notary;
 
+import com.browserup.bup.BrowserUpProxyServer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.io.BaseEncoding;
-import net.lightbody.bmp.BrowserMobProxyServer;
+import org.littleshoot.proxy.HttpFiltersSource;
 import org.littleshoot.proxy.HttpFiltersSourceAdapter;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -18,6 +19,7 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.nio.file.attribute.FileTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -103,119 +105,133 @@ class Visit {
     }
 
     @JsonIgnore
-    public Visit inspect(Inspection... inspections) throws InspectionException, InterruptedException, IOException {
-        // setup
-        System.setProperty("webdriver.chrome.driver", Main.DRIVER_FILE);
+    public Visit inspect(Inspection... inspections) throws NotaryException {
+        BrowserUpProxyServer proxy = null;
+        ChromeDriver driver = null;
+        try {
+            // setup
+            System.setProperty("webdriver.chrome.driver", Main.DRIVER_FILE);
 
-        final ChromeOptions options = new ChromeOptions();
-        options.setBinary(Main.CHROME_FILE);
-        options.addArguments(
-                "--disable-gpu",
-                "--disable-dev-shm-usage",
-                "--user-data-dir=" + this.userDataDir,
-                "--window-size=" + this.deviceType.getWidth() + "," + this.deviceType.getHeight(),
-                "--disable-default-apps",
-                "--disable-extensions",
-                "--no-default-browser-check",
-                "--disable-sync",
-                "--disable-translate",
-                "--enable-automation",
-                "--disable-account-consistency",
-                "--disable-browser-side-navigation",
-                "--remote-debugging-port=0"
-        );
-        if (Type.Incognito == this.visitType) {
-            options.addArguments("--incognito");
-        }
-
-        // https://chromedriver.chromium.org/mobile-emulation
-        if (this.deviceType.isMobile()) {
-            final Map<String, Object> deviceMetrics = new HashMap<>();
-            deviceMetrics.put("width", this.deviceType.getWidth());
-            deviceMetrics.put("height", this.deviceType.getHeight());
-            deviceMetrics.put("pixelRatio", this.deviceType.getScaleFactor());
-            final Map<String, Object> mobileEmulation = new HashMap<>();
-            mobileEmulation.put("deviceMetrics", deviceMetrics);
-            mobileEmulation.put("userAgent", this.deviceType.getUserAgent());
-            options.setExperimentalOption("mobileEmulation", mobileEmulation);
-        }
-
-        final DesiredCapabilities desiredCapabilities = new DesiredCapabilities();
-        desiredCapabilities.setCapability(CapabilityType.HAS_TOUCHSCREEN, this.deviceType.hasTouch());
-
-        desiredCapabilities.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);
-        desiredCapabilities.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
-
-        final BrowserMobProxyServer proxy = new BrowserMobProxyServer();
-        proxy.addFirstHttpFilterFactory(new HttpFiltersSourceAdapter() {
-            @Override
-            public int getMaximumRequestBufferSizeInBytes() {
-                return Integer.MAX_VALUE;
-            }
-
-            @Override
-            public int getMaximumResponseBufferSizeInBytes() {
-                return Integer.MAX_VALUE;
-            }
-        });
-        proxy.setHostNameResolver(new DnsOverHttpsResolver());
-        proxy.setMitmDisabled(false);
-        proxy.start(0, InetAddress.getByName("127.0.0.1"));
-
-        final Proxy seleniumProxy = new Proxy();
-        final String proxyStr = "localhost:" + proxy.getPort();
-        seleniumProxy.setHttpProxy(proxyStr);
-        seleniumProxy.setSslProxy(proxyStr);
-        desiredCapabilities.setCapability(CapabilityType.PROXY, seleniumProxy);
-        options.merge(desiredCapabilities);
-        final ChromeDriver driver = new ChromeDriver(options);
-
-        // beforeLoad
-        this.browserName = driver.getCapabilities().getBrowserName();
-        this.platformName = driver.getCapabilities().getPlatform().name();
-        this.browserVersion = driver.getCapabilities().getVersion();
-        for (Inspection inspection : inspections) {
-            inspection.beforeLoad(proxy, this.url);
-        }
-
-        // dump environment
-        options.asMap().forEach((key, value) -> this.chromeOptions.put(key, value.toString()));
-        System.getProperties().forEach((key, value) -> this.systemProperties.put(key.toString(), value.toString()));
-        for (java.net.NetworkInterface networkInterface : Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
-            this.networkInterfaces.add(
-                    new NetworkInterface(
-                            networkInterface.getName(),
-                            null != networkInterface.getHardwareAddress() ? BaseEncoding.base16().encode(networkInterface.getHardwareAddress()) : null,
-                            Collections
-                                    .list(networkInterface.getInetAddresses())
-                                    .stream()
-                                    .map(InetAddress::getHostAddress)
-                                    .collect(Collectors.toCollection(LinkedList::new))
-                    )
+            final ChromeOptions options = new ChromeOptions();
+            options.setBinary(Main.CHROME_FILE);
+            options.addArguments(
+                    "--disable-gpu",
+                    "--disable-dev-shm-usage",
+                    "--user-data-dir=" + this.userDataDir,
+                    "--window-size=" + this.deviceType.getWidth() + "," + this.deviceType.getHeight(),
+                    "--disable-default-apps",
+                    "--disable-extensions",
+                    "--no-default-browser-check",
+                    "--disable-sync",
+                    "--disable-translate",
+                    "--enable-automation",
+                    "--disable-account-consistency",
+                    "--disable-browser-side-navigation",
+                    "--remote-debugging-port=0"
             );
-        }
+            if (Type.Incognito == this.visitType) {
+                options.addArguments("--incognito");
+            }
 
-        // page load
-        this.startTime = Date.from(NtpClock.getInstance().instant());
-        driver.get(this.url.toString());
-        Thread.sleep(1000 * this.duration);
-        this.currentUrl = new URL(driver.getCurrentUrl());
-        for (Inspection inspection : inspections) {
-            inspection.onLoad(driver);
-        }
-        this.stopTime = Date.from(NtpClock.getInstance().instant());
+            // https://chromedriver.chromium.org/mobile-emulation
+            if (this.deviceType.isMobile()) {
+                final Map<String, Object> deviceMetrics = new HashMap<>();
+                deviceMetrics.put("width", this.deviceType.getWidth());
+                deviceMetrics.put("height", this.deviceType.getHeight());
+                deviceMetrics.put("pixelRatio", this.deviceType.getScaleFactor());
+                final Map<String, Object> mobileEmulation = new HashMap<>();
+                mobileEmulation.put("deviceMetrics", deviceMetrics);
+                mobileEmulation.put("userAgent", this.deviceType.getUserAgent());
+                options.setExperimentalOption("mobileEmulation", mobileEmulation);
+            }
 
-        // afterLoad
-        for (Inspection inspection : inspections) {
-            Map<String, byte[]> artifact = inspection.afterLoad(proxy, this.visitType);
-            if (null != artifact) {
-                this.artifacts.add(artifact);
+            final DesiredCapabilities desiredCapabilities = new DesiredCapabilities();
+            desiredCapabilities.setCapability(CapabilityType.HAS_TOUCHSCREEN, this.deviceType.hasTouch());
+
+            desiredCapabilities.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);
+            desiredCapabilities.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+
+            proxy = new BrowserUpProxyServer();
+            proxy.setConnectTimeout(5, TimeUnit.SECONDS);
+            proxy.setRequestTimeout(5, TimeUnit.SECONDS);
+            proxy.setIdleConnectionTimeout(5, TimeUnit.SECONDS);
+            proxy.addFirstHttpFilterFactory(new HttpFiltersSourceAdapter() {
+                @Override
+                public int getMaximumRequestBufferSizeInBytes() {
+                    return Integer.MAX_VALUE;
+                }
+
+                @Override
+                public int getMaximumResponseBufferSizeInBytes() {
+                    return Integer.MAX_VALUE;
+                }
+            });
+            proxy.setHostNameResolver(new DnsOverHttpsResolver());
+            proxy.setMitmDisabled(false);
+            proxy.start(0, InetAddress.getByName("127.0.0.1"));
+
+            final Proxy seleniumProxy = new Proxy();
+            final String proxyStr = "127.0.0.1:" + proxy.getPort();
+            seleniumProxy.setHttpProxy(proxyStr);
+            seleniumProxy.setSslProxy(proxyStr);
+            desiredCapabilities.setCapability(CapabilityType.PROXY, seleniumProxy);
+            options.merge(desiredCapabilities);
+            driver = new ChromeDriver(options);
+
+            // beforeLoad
+            this.browserName = driver.getCapabilities().getBrowserName();
+            this.platformName = driver.getCapabilities().getPlatform().name();
+            this.browserVersion = driver.getCapabilities().getVersion();
+            for (Inspection inspection : inspections) {
+                inspection.beforeLoad(proxy, this.url);
+            }
+
+            // dump environment
+            options.asMap().forEach((key, value) -> this.chromeOptions.put(key, value.toString()));
+            System.getProperties().forEach((key, value) -> this.systemProperties.put(key.toString(), value.toString()));
+            for (java.net.NetworkInterface networkInterface : Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                this.networkInterfaces.add(
+                        new NetworkInterface(
+                                networkInterface.getName(),
+                                null != networkInterface.getHardwareAddress() ? BaseEncoding.base16().encode(networkInterface.getHardwareAddress()) : null,
+                                Collections
+                                        .list(networkInterface.getInetAddresses())
+                                        .stream()
+                                        .map(InetAddress::getHostAddress)
+                                        .collect(Collectors.toCollection(LinkedList::new))
+                        )
+                );
+            }
+
+            // page load
+            this.startTime = Date.from(NtpClock.getInstance().instant());
+            driver.get(this.url.toString());
+            Thread.sleep(1000 * this.duration);
+            this.currentUrl = new URL(driver.getCurrentUrl());
+            for (Inspection inspection : inspections) {
+                inspection.onLoad(driver);
+            }
+            this.stopTime = Date.from(NtpClock.getInstance().instant());
+
+            // afterLoad
+            proxy.getFilterFactories().clear();
+            for (Inspection inspection : inspections) {
+                Map<String, byte[]> artifact = inspection.afterLoad(proxy, this.visitType);
+                if (null != artifact) {
+                    this.artifacts.add(artifact);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new NotaryException(e.getMessage());
+        } finally {
+            if (null != driver) {
+                driver.quit();
+            }
+            if (null != proxy) {
+                proxy.abort();
             }
         }
-
-        // teardown
-        driver.quit();
-        proxy.stop();
         return this;
     }
 

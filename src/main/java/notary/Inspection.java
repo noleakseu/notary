@@ -1,8 +1,8 @@
 package notary;
 
+import com.browserup.bup.BrowserUpProxyServer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import net.lightbody.bmp.BrowserMobProxyServer;
 import org.openqa.selenium.chrome.ChromeDriver;
 
 import java.net.URL;
@@ -14,11 +14,11 @@ public interface Inspection {
     String getInspection();
 
     @JsonIgnore
-    void beforeLoad(BrowserMobProxyServer proxy, URL url);
+    void beforeLoad(BrowserUpProxyServer proxy, URL url);
 
     @JsonIgnore
     void onLoad(ChromeDriver driver);
 
     @JsonIgnore
-    Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) throws InspectionException;
+    Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws NotaryException;
 }

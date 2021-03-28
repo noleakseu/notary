@@ -1,8 +1,8 @@
 package notary;
 
+import com.browserup.bup.BrowserUpProxyServer;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.google.common.collect.ImmutableMap;
-import net.lightbody.bmp.BrowserMobProxyServer;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -22,7 +22,7 @@ class VisibilityInspection implements Inspection {
     }
 
     @Override
-    public void beforeLoad(BrowserMobProxyServer proxy, URL url) {
+    public void beforeLoad(BrowserUpProxyServer proxy, URL url) {
     }
 
     @Override
@@ -31,7 +31,7 @@ class VisibilityInspection implements Inspection {
     }
 
     @Override
-    public Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) {
+    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) {
         String file = getInspection() + "." + visitType.name() + ".png";
         this.artifacts.add(new Visibility(file, "image/png"));
         return ImmutableMap.of(file, this.screenshot);

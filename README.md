@@ -267,8 +267,23 @@ NoLeaks Notary is a tool that takes digitally signed snapshots of web-pages for 
     <details><summary>example</summary>
     <pre>
     {
-      "valid": false,
-      "path": [],
+      "valid": true,
+      "path": [
+        {
+          "type": "X.509",
+          "valid": true,
+          "issuer": "CN=R3, O=Let's Encrypt, C=US",
+          "serial": 416448724033966231022324633582038357897465,
+          "expiryDate": "2021-06-17T06:04:43.000+0000"
+        },
+        {
+          "type": "X.509",
+          "valid": true,
+          "issuer": "CN=DST Root CA X3, O=Digital Signature Trust Co.",
+          "serial": 85078157426496920958827089468591623647,
+          "expiryDate": "2021-09-29T19:21:40.000+0000"
+        }
+      ],
       "inspection": "TlsCertificateInspection"
     }
     </pre>

@@ -75,7 +75,6 @@ class Main {
      * Entry point
      */
     public static void main(String[] args) {
-        // args
         ArgumentParser parser = ArgumentParsers.newFor("notary.jar").build()
                 .defaultHelp(true)
                 .description("" + APP_TITLE + " " + APP_VERSION + " by " + APP_VENDOR);
@@ -99,18 +98,16 @@ class Main {
         parser.addArgument("-u", "--url")
                 .setDefault("")
                 .help("Specify URL (CLI mode only)");
+
         try {
+            // parse args
             Namespace ns = parser.parseArgs(args);
 
-            // unpack binaries
-            try {
-                unzip(Main.class.getClassLoader().getResourceAsStream("chrome-linux.zip"));
-                unzip(Main.class.getClassLoader().getResourceAsStream("chromedriver_linux64.zip"));
-                new File(DRIVER_FILE).setExecutable(true);
-                new File(CHROME_FILE).setExecutable(true);
-            } catch (IOException e) {
-                System.exit(1);
-            }
+            // unzip binaries
+            unzip(Main.class.getClassLoader().getResourceAsStream("chrome-linux.zip"));
+            unzip(Main.class.getClassLoader().getResourceAsStream("chromedriver_linux64.zip"));
+            new File(DRIVER_FILE).setExecutable(true);
+            new File(CHROME_FILE).setExecutable(true);
 
             // create signer
             final KeyStore keyStore = KeyStore.getInstance(new File(ns.getString(ARG_KEYSTORE)), ns.getString(ARG_STOREPASS).toCharArray());
@@ -127,6 +124,10 @@ class Main {
                             config.showJavalinBanner = false;
                         }
                 );
+                app.exception(NotaryException.class, (e, ctx) -> {
+                    ctx.status(500);
+                    ctx.result("NotaryException " + e.getMessage());
+                });
                 app.after("/", ctx -> {
                     ctx.res.setHeader("Server", "" + APP_TITLE + " " + APP_VERSION);
                     ctx.res.setDateHeader("Date", NtpClock.getInstance().instant().toEpochMilli());
@@ -174,7 +175,7 @@ class Main {
         } catch (ArgumentParserException e) {
             parser.handleError(e);
             System.exit(1);
-        } catch (InterruptedException | URISyntaxException | IOException | InspectionException | CertificateException | NoSuchAlgorithmException | KeyStoreException | UnrecoverableEntryException e) {
+        } catch (URISyntaxException | IOException | NotaryException | CertificateException | NoSuchAlgorithmException | KeyStoreException | UnrecoverableEntryException e) {
             System.err.println(e.getMessage());
             System.exit(1);
         }
@@ -183,7 +184,7 @@ class Main {
     /**
      * Snapshot generator
      */
-    public static void snapshot(URL url, Device.Type deviceType, SummaryBuilder.Language language, OutputStream stream) throws IOException, InspectionException, InterruptedException {
+    public static void snapshot(URL url, Device.Type deviceType, SummaryBuilder.Language language, OutputStream stream) throws NotaryException {
         try (final ZipOutputStream zipOutputStream = new ZipOutputStream(stream)) {
             // init documentation
             final Builder jsonMeta = new MetaBuilder();
@@ -271,6 +272,8 @@ class Main {
                     )
                     .build(zipOutputStream, META_NAME, FileTime.from(now));
 
+        } catch (IOException e) {
+            throw new NotaryException(e.getMessage());
         }
     }
 

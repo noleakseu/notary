@@ -1,10 +1,10 @@
 package notary;
 
+import com.browserup.bup.BrowserUpProxyServer;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
-import net.lightbody.bmp.BrowserMobProxyServer;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.openqa.selenium.chrome.ChromeDriver;
 
@@ -12,6 +12,7 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +30,7 @@ class EtagInspection implements Inspection {
     }
 
     @Override
-    public void beforeLoad(BrowserMobProxyServer proxy, URL url) {
+    public void beforeLoad(BrowserUpProxyServer proxy, URL url) {
         this.source = url;
         proxy.addResponseFilter((server, contents, messageInfo) -> {
             if (server.headers().contains(HEADER)) {
@@ -46,23 +47,26 @@ class EtagInspection implements Inspection {
     }
 
     @Override
-    public Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) throws InspectionException {
+    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws NotaryException {
         try {
+            InetAddress sourceIp = proxy.getHostNameResolver().resolve(this.source.getHost()).iterator().next();
             Instant now = NtpClock.getInstance().instant();
+            final Map<String, List<TlsCertificate>> cache = new HashMap<>();
             List<TlsCertificate> sourcePath = Main.getCertificatePath(this.source, now);
             for (Map.Entry<String, Map<String, String>> party : this.anyParty.entries()) {
                 final URL targetUrl = new URL(party.getKey());
-                List<TlsCertificate> targetPath = Main.getCertificatePath(targetUrl, now);
+                if (!cache.containsKey(targetUrl.getHost())) {
+                    cache.put(targetUrl.getHost(), Main.getCertificatePath(targetUrl, now));
+                }
                 InetAddress targetIp = proxy.getHostNameResolver().resolve(targetUrl.getHost()).iterator().next();
-                InetAddress sourceIp = proxy.getHostNameResolver().resolve(this.source.getHost()).iterator().next();
-                if (Main.isFirstParty(this.source, sourceIp, targetUrl, targetIp, !sourcePath.isEmpty() ? sourcePath.get(0) : null, !targetPath.isEmpty() ? targetPath.get(0) : null)) {
+                if (Main.isFirstParty(this.source, sourceIp, targetUrl, targetIp, !sourcePath.isEmpty() ? sourcePath.get(0) : null, !cache.get(targetUrl.getHost()).isEmpty() ? cache.get(targetUrl.getHost()).get(0) : null)) {
                     Main.distinctEtags(this.firstParty, new Etag(party.getKey(), party.getValue()));
                 } else {
                     Main.distinctEtags(this.thirdParty, new Etag(party.getKey(), party.getValue()));
                 }
             }
         } catch (MalformedURLException e) {
-            throw new InspectionException(e.getMessage());
+            throw new NotaryException(e.getMessage());
         }
         return null;
     }

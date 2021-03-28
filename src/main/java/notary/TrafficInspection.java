@@ -1,9 +1,9 @@
 package notary;
 
+import com.browserup.bup.BrowserUpProxyServer;
+import com.browserup.bup.proxy.CaptureType;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.google.common.collect.ImmutableMap;
-import net.lightbody.bmp.BrowserMobProxyServer;
-import net.lightbody.bmp.proxy.CaptureType;
 import org.openqa.selenium.chrome.ChromeDriver;
 
 import java.io.ByteArrayOutputStream;
@@ -20,7 +20,7 @@ class TrafficInspection implements Inspection {
     }
 
     @Override
-    public void beforeLoad(BrowserMobProxyServer proxy, URL url) {
+    public void beforeLoad(BrowserUpProxyServer proxy, URL url) {
         final EnumSet<CaptureType> captureTypes = CaptureType.getAllContentCaptureTypes();
         captureTypes.addAll(CaptureType.getHeaderCaptureTypes());
         captureTypes.addAll(CaptureType.getCookieCaptureTypes());
@@ -34,7 +34,7 @@ class TrafficInspection implements Inspection {
     }
 
     @Override
-    public Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) throws InspectionException {
+    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws NotaryException {
         try {
             String file = getInspection() + "." + visitType.name() + ".har";
             final Traffic traffic = new Traffic(file, "application/json");
@@ -43,7 +43,7 @@ class TrafficInspection implements Inspection {
             proxy.getHar().writeTo(stream);
             return ImmutableMap.of(file, stream.toByteArray());
         } catch (IOException e) {
-            throw new InspectionException(e.getMessage());
+            throw new NotaryException(e.getMessage());
         }
     }
 

@@ -1,8 +1,8 @@
 package notary;
 
+import com.browserup.bup.BrowserUpProxyServer;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.google.common.collect.ImmutableMap;
-import net.lightbody.bmp.BrowserMobProxyServer;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.OutputType;
@@ -27,7 +27,7 @@ class ModalityInspection implements Inspection {
     }
 
     @Override
-    public void beforeLoad(BrowserMobProxyServer proxy, URL url) {
+    public void beforeLoad(BrowserUpProxyServer proxy, URL url) {
     }
 
     @Override
@@ -58,7 +58,7 @@ class ModalityInspection implements Inspection {
     }
 
     @Override
-    public Map<String, byte[]> afterLoad(BrowserMobProxyServer proxy, Visit.Type visitType) {
+    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) {
         String file = getInspection() + "." + visitType.name() + ".png";
         final Modality modality = new Modality(file, "image/png", this.scrollable);
         this.artifacts.add(modality);
