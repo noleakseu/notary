@@ -4,7 +4,7 @@
     <groupId>eu.noleaks</groupId>
     <artifactId>notary</artifactId>
 
-    <version>1.7.2-beta</version>
+    <version>1.7.3-beta</version>
     <name>Notary</name>
     <organization>
         <name>NoLeaks</name>

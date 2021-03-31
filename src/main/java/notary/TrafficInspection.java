@@ -34,17 +34,13 @@ class TrafficInspection implements Inspection {
     }
 
     @Override
-    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws NotaryException {
-        try {
-            String file = getInspection() + "." + visitType.name() + ".har";
-            final Traffic traffic = new Traffic(file, "application/json");
-            this.artifacts.add(traffic);
-            final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            proxy.getHar().writeTo(stream);
-            return ImmutableMap.of(file, stream.toByteArray());
-        } catch (IOException e) {
-            throw new NotaryException(e.getMessage());
-        }
+    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws IOException {
+        String file = getInspection() + "." + visitType.name() + ".har";
+        final Traffic traffic = new Traffic(file, "application/json");
+        this.artifacts.add(traffic);
+        final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        proxy.getHar().writeTo(stream);
+        return ImmutableMap.of(file, stream.toByteArray());
     }
 
     @JsonPropertyDescription("HTTP Archive files")

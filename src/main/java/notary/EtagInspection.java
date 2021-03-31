@@ -47,26 +47,22 @@ class EtagInspection implements Inspection {
     }
 
     @Override
-    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws NotaryException {
-        try {
-            InetAddress sourceIp = proxy.getHostNameResolver().resolve(this.source.getHost()).iterator().next();
-            Instant now = NtpClock.getInstance().instant();
-            final Map<String, List<TlsCertificate>> cache = new HashMap<>();
-            List<TlsCertificate> sourcePath = Main.getCertificatePath(this.source, now);
-            for (Map.Entry<String, Map<String, String>> party : this.anyParty.entries()) {
-                final URL targetUrl = new URL(party.getKey());
-                if (!cache.containsKey(targetUrl.getHost())) {
-                    cache.put(targetUrl.getHost(), Main.getCertificatePath(targetUrl, now));
-                }
-                InetAddress targetIp = proxy.getHostNameResolver().resolve(targetUrl.getHost()).iterator().next();
-                if (Main.isFirstParty(this.source, sourceIp, targetUrl, targetIp, !sourcePath.isEmpty() ? sourcePath.get(0) : null, !cache.get(targetUrl.getHost()).isEmpty() ? cache.get(targetUrl.getHost()).get(0) : null)) {
-                    Main.distinctEtags(this.firstParty, new Etag(party.getKey(), party.getValue()));
-                } else {
-                    Main.distinctEtags(this.thirdParty, new Etag(party.getKey(), party.getValue()));
-                }
+    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws MalformedURLException {
+        InetAddress sourceIp = proxy.getHostNameResolver().resolve(this.source.getHost()).iterator().next();
+        Instant now = NtpClock.getInstance().instant();
+        final Map<String, List<TlsCertificate>> cache = new HashMap<>();
+        List<TlsCertificate> sourcePath = Main.getCertificatePath(this.source, now);
+        for (Map.Entry<String, Map<String, String>> party : this.anyParty.entries()) {
+            final URL targetUrl = new URL(party.getKey());
+            if (!cache.containsKey(targetUrl.getHost())) {
+                cache.put(targetUrl.getHost(), Main.getCertificatePath(targetUrl, now));
             }
-        } catch (MalformedURLException e) {
-            throw new NotaryException(e.getMessage());
+            InetAddress targetIp = proxy.getHostNameResolver().resolve(targetUrl.getHost()).iterator().next();
+            if (Main.isFirstParty(this.source, sourceIp, targetUrl, targetIp, !sourcePath.isEmpty() ? sourcePath.get(0) : null, !cache.get(targetUrl.getHost()).isEmpty() ? cache.get(targetUrl.getHost()).get(0) : null)) {
+                Main.distinctEtags(this.firstParty, new Etag(party.getKey(), party.getValue()));
+            } else {
+                Main.distinctEtags(this.thirdParty, new Etag(party.getKey(), party.getValue()));
+            }
         }
         return null;
     }

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <meta name="language" content="en"/>
+    <meta name="description" content="NoLeaks Notary is a tool that takes digitally signed snapshots of web-pages for court proceedings"/>
+    <title>History</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            font: inherit;
+            vertical-align: baseline;
+            box-sizing: border-box;
+            color: inherit;
+        }
+
+        body {
+            background-color: lightgray;
+            height: 100vh;
+        }
+
+        h1 {
+            font-size: 45vw;
+            text-align: center;
+            position: fixed;
+            width: 100vw;
+            z-index: 1;
+            color: #ffffff26;
+            text-shadow: 0 0 50px rgba(0, 0, 0, 0.07);
+            top: 50%;
+            transform: translateY(-50%);
+            font-family: serif;
+        }
+
+        h2 {
+            line-height: 1.5;
+            display: block;
+            font-size: 18pt;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        div {
+            font-family: monospace;
+            font-size: 12pt;
+            line-height: 2;
+            background: rgba(0, 0, 0, 0);
+            width: 90vw;
+            position: relative;
+            top: 10%;
+            margin: auto auto 10%;
+            padding: 30px 30px 10px;
+            box-shadow: 0 0 150px -20px rgba(0, 0, 0, 0.5);
+            z-index: 3;
+        }
+
+        b {
+            color: #FFCC00;
+        }
+
+        i {
+            color: #003399;
+            font-weight: bold;
+        }
+
+        th {
+            text-align: left;
+            font-weight: normal;
+        }
+
+        td {
+            text-align: right;
+            font-weight: normal;
+        }
+
+        tr {
+            border-bottom: dashed 1px gray;
+        }
+
+        table {
+            border: 0;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .header {
+            position: relative;
+            text-align: center;
+        }
+
+        fieldset {
+            border: medium none !important;
+            margin: 0 0 10px;
+            padding: 0;
+        }
+
+        input, select {
+            width: 100%;
+            border: 1px solid #ccc;
+            background: white;
+            margin: 0 0 5px;
+            padding: 10px;
+        }
+
+        button {
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            border: none;
+            background: #003399;
+            color: #FFCC00;;
+            margin: 0 0 5px;
+            padding: 10px;
+            font-size: 15px;
+        }
+
+        button:hover, a:hover {
+            color: #003399;
+            background: #FFCC00;
+        }
+    </style>
+</head>
+<body>
+<h1>⚖</h1>
+<div>
+    <span class="header">
+        <h2>Last <i th:text="${limit}">5</i> snapshots</h2>
+        <p>Please post the issues on <a th:text="${origin}" th:href="${origin}" href="https://github.com/noleakseu/notary">https://github.com/noleakseu/notary</a></p>
+    </span>
+    <!--/*@thymesVar id="snapshot" type="notary.Snapshot"*/-->
+    <table th:each="snapshot : ${snapshots}">
+        <tr>
+            <th><i th:text="${snapshot.url}">https://test.noleaks.eu</i></th>
+            <td th:text="${snapshot.timestamp}">2021-03-28T06:47:53.414Z</td>
+        </tr>
+        <tr th:unless="${!snapshot.exception}">
+            <th colspan="2" th:text="${snapshot.exception}">
+                <pre>org.openqa.selenium.WebDriverException: unknown error: net::ERR_TUNNEL_CONNECTION_FAILED</pre>
+            </th>
+        </tr>
+    </table>
+</div>
+</body>
+</html>

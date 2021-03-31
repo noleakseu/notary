@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.io.BaseEncoding;
-import org.littleshoot.proxy.HttpFiltersSource;
 import org.littleshoot.proxy.HttpFiltersSourceAdapter;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -105,7 +104,7 @@ class Visit {
     }
 
     @JsonIgnore
-    public Visit inspect(Inspection... inspections) throws NotaryException {
+    public Visit inspect(Inspection... inspections) throws Exception {
         BrowserUpProxyServer proxy = null;
         ChromeDriver driver = null;
         try {
@@ -223,7 +222,7 @@ class Visit {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            throw new NotaryException(e.getMessage());
+            throw e;
         } finally {
             if (null != driver) {
                 driver.quit();

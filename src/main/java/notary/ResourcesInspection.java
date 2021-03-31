@@ -32,26 +32,22 @@ class ResourcesInspection implements Inspection {
     }
 
     @Override
-    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws NotaryException {
-        try {
-            InetAddress sourceIp = proxy.getHostNameResolver().resolve(this.source.getHost()).iterator().next();
-            Instant now = NtpClock.getInstance().instant();
-            final Map<String, List<TlsCertificate>> cache = new HashMap<>();
-            List<TlsCertificate> sourcePath = Main.getCertificatePath(this.source, now);
-            for (String target : this.anyParty.values()) {
-                final URL targetUrl = new URL(target);
-                if (!cache.containsKey(targetUrl.getHost())) {
-                    cache.put(targetUrl.getHost(), Main.getCertificatePath(targetUrl, now));
-                }
-                final InetAddress targetIp = proxy.getHostNameResolver().resolve(targetUrl.getHost()).iterator().next();
-                if (Main.isFirstParty(this.source, sourceIp, targetUrl, targetIp, !sourcePath.isEmpty() ? sourcePath.get(0) : null, !cache.get(targetUrl.getHost()).isEmpty() ? cache.get(targetUrl.getHost()).get(0) : null)) {
-                    firstParty.add(new Resource(targetUrl, targetIp.getHostAddress()));
-                } else {
-                    thirdParty.add(new Resource(targetUrl, targetIp.getHostAddress()));
-                }
+    public Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws MalformedURLException {
+        InetAddress sourceIp = proxy.getHostNameResolver().resolve(this.source.getHost()).iterator().next();
+        Instant now = NtpClock.getInstance().instant();
+        final Map<String, List<TlsCertificate>> cache = new HashMap<>();
+        List<TlsCertificate> sourcePath = Main.getCertificatePath(this.source, now);
+        for (String target : this.anyParty.values()) {
+            final URL targetUrl = new URL(target);
+            if (!cache.containsKey(targetUrl.getHost())) {
+                cache.put(targetUrl.getHost(), Main.getCertificatePath(targetUrl, now));
             }
-        } catch (MalformedURLException e) {
-            throw new NotaryException(e.getMessage());
+            final InetAddress targetIp = proxy.getHostNameResolver().resolve(targetUrl.getHost()).iterator().next();
+            if (Main.isFirstParty(this.source, sourceIp, targetUrl, targetIp, !sourcePath.isEmpty() ? sourcePath.get(0) : null, !cache.get(targetUrl.getHost()).isEmpty() ? cache.get(targetUrl.getHost()).get(0) : null)) {
+                firstParty.add(new Resource(targetUrl, targetIp.getHostAddress()));
+            } else {
+                thirdParty.add(new Resource(targetUrl, targetIp.getHostAddress()));
+            }
         }
         return null;
     }

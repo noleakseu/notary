@@ -20,5 +20,5 @@ public interface Inspection {
     void onLoad(ChromeDriver driver);
 
     @JsonIgnore
-    Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws NotaryException;
+    Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws Exception;
 }

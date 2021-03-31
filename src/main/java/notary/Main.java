@@ -1,5 +1,7 @@
 package notary;
 
+import com.google.common.collect.EvictingQueue;
+import com.google.common.collect.Queues;
 import com.google.common.net.InternetDomainName;
 import io.javalin.Javalin;
 import io.javalin.http.util.RateLimit;
@@ -23,20 +25,23 @@ import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
-import java.security.*;
+import java.security.KeyStore;
+import java.security.Security;
 import java.security.cert.Certificate;
-import java.security.cert.*;
+import java.security.cert.CertificateExpiredException;
+import java.security.cert.CertificateNotYetValidException;
+import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -45,7 +50,8 @@ import java.util.zip.ZipOutputStream;
 
 class Main {
     private static final long VISIT_DURATION_SEC = 5;
-    private static final int DAILY_LIMIT = 100;
+    private static final int HOURLY_LIMIT = 2;
+    private static final int HISTORY_LIMIT = 5;
 
     private static final String SNAPSHOT_NAME = "snapshot.zip";
     static final String SCHEMA_NAME = "schema.json";
@@ -65,6 +71,7 @@ class Main {
     static final String APP_TITLE = Main.class.getPackage().getImplementationTitle();
     static final String APP_VERSION = Main.class.getPackage().getImplementationVersion();
     static final String APP_VENDOR = Main.class.getPackage().getImplementationVendor();
+    static final String APP_ORIGIN = "https://github.com/noleakseu/notary";
     public static final String APP_HOST = "0.0.0.0";
     public static final int APP_PORT = 8000;
     public static final String APP_NTP = "time.cloudflare.com";
@@ -118,34 +125,38 @@ class Main {
 
             if (ns.get("url").equals("")) {
                 // API mode
+                Queue<Snapshot> snapshots = Queues.synchronizedQueue(EvictingQueue.create(HISTORY_LIMIT));
                 Javalin app = Javalin.create(
                         config -> {
                             config.enableCorsForAllOrigins();
                             config.showJavalinBanner = false;
                         }
                 );
-                app.exception(NotaryException.class, (e, ctx) -> {
-                    ctx.status(500);
-                    ctx.result("NotaryException " + e.getMessage());
-                });
-                app.after("/", ctx -> {
-                    ctx.res.setHeader("Server", "" + APP_TITLE + " " + APP_VERSION);
-                    ctx.res.setDateHeader("Date", NtpClock.getInstance().instant().toEpochMilli());
-                });
                 app.get("/", ctx -> {
-                    // status
-                    if (ctx.queryParamMap().isEmpty()) {
-                        ctx.res.addHeader("Content-Type", "text/html; charset=UTF-8");
-                        status(ctx.res.getOutputStream());
-                        return;
-                    }
+                    ctx.res.addHeader("Content-Type", "text/html; charset=UTF-8");
+                    final Context tpl = new Context();
+                    tpl.setVariable("devices", Device.Type.values());
+                    tpl.setVariable("languages", SummaryBuilder.Language.values());
+                    tpl.setVariable("javaVendor", System.getProperty("java.vendor"));
+                    tpl.setVariable("javaVersion", System.getProperty("java.version"));
+                    tpl.setVariable("osName", System.getProperty("os.name"));
+                    tpl.setVariable("osVersion", System.getProperty("os.version"));
+                    tpl.setVariable("title", APP_TITLE);
+                    tpl.setVariable("version", APP_VERSION);
+                    tpl.setVariable("vendor", APP_VENDOR);
+                    tpl.setVariable("dns", APP_DNS);
+                    tpl.setVariable("ntp", APP_NTP);
+                    tpl.setVariable("tsa", APP_TSA);
+                    tpl.setVariable("limit", HOURLY_LIMIT);
+                    tpl.setVariable("origin", APP_ORIGIN);
+                    final TemplateEngine templateEngine = new TemplateEngine();
+                    templateEngine.setTemplateResolver(new ClassLoaderTemplateResolver());
+                    templateEngine.process("/templates/index.html", tpl, new OutputStreamWriter(ctx.res.getOutputStream()));
+                });
+                app.get("/snapshot", ctx -> {
+                    new RateLimit(ctx).requestPerTimeUnit(HOURLY_LIMIT, TimeUnit.HOURS);
 
-                    // snapshot
-                    new RateLimit(ctx).requestPerTimeUnit(DAILY_LIMIT, TimeUnit.DAYS);
-                    ctx.res.addHeader("Content-Type", "application/zip");
-                    ctx.res.addHeader("Content-Disposition", "attachment; filename=\"" + SNAPSHOT_NAME + "\"");
-                    ctx.res.addHeader("Content-Transfer-Encoding", "binary");
-
+                    // take
                     File zip = Files.createTempFile("zip-", ".tmp").toFile();
                     zip.deleteOnExit();
                     snapshot(
@@ -154,9 +165,37 @@ class Main {
                             SummaryBuilder.Language.valueOf(ctx.queryParam(ARG_LANGUAGE)),
                             new FileOutputStream(zip)
                     );
+
+                    // sign
+                    ctx.res.addHeader("Content-Type", "application/zip");
+                    ctx.res.addHeader("Content-Disposition", "attachment; filename=\"" + SNAPSHOT_NAME + "\"");
+                    ctx.res.addHeader("Content-Transfer-Encoding", "binary");
                     signer.sign(new ZipFile(zip), ctx.res.getOutputStream());
+
                     zip.delete();
+                    snapshots.add(new Snapshot(ctx.queryParam(ARG_URL)));
                 });
+                app.before(ctx -> {
+                    ctx.res.setHeader("Server", "" + APP_TITLE + " " + APP_VERSION);
+                    ctx.res.setDateHeader("Date", NtpClock.getInstance().instant().toEpochMilli());
+                });
+
+                app.get("/history", ctx -> {
+                    ctx.res.addHeader("Content-Type", "text/html; charset=UTF-8");
+                    final Context tpl = new Context();
+                    tpl.setVariable("limit", HISTORY_LIMIT);
+                    tpl.setVariable("snapshots", snapshots.toArray());
+                    tpl.setVariable("origin", APP_ORIGIN);
+                    final TemplateEngine templateEngine = new TemplateEngine();
+                    templateEngine.setTemplateResolver(new ClassLoaderTemplateResolver());
+                    templateEngine.process("/templates/history.html", tpl, new OutputStreamWriter(ctx.res.getOutputStream()));
+                });
+                app.exception(Exception.class, (e, ctx) -> {
+                    snapshots.add(new Snapshot(ctx.queryParam(ARG_URL), e));
+                    ctx.res.setStatus(302);
+                    ctx.res.addHeader("Location", "/history");
+                });
+
                 Runtime.getRuntime().addShutdownHook(new Thread(app::stop));
                 app.start(APP_HOST, APP_PORT);
             } else {
@@ -175,7 +214,7 @@ class Main {
         } catch (ArgumentParserException e) {
             parser.handleError(e);
             System.exit(1);
-        } catch (URISyntaxException | IOException | NotaryException | CertificateException | NoSuchAlgorithmException | KeyStoreException | UnrecoverableEntryException e) {
+        } catch (Exception e) {
             System.err.println(e.getMessage());
             System.exit(1);
         }
@@ -184,7 +223,7 @@ class Main {
     /**
      * Snapshot generator
      */
-    public static void snapshot(URL url, Device.Type deviceType, SummaryBuilder.Language language, OutputStream stream) throws NotaryException {
+    public static void snapshot(URL url, Device.Type deviceType, SummaryBuilder.Language language, OutputStream stream) throws Exception {
         try (final ZipOutputStream zipOutputStream = new ZipOutputStream(stream)) {
             // init documentation
             final Builder jsonMeta = new MetaBuilder();
@@ -271,9 +310,6 @@ class Main {
                             etag
                     )
                     .build(zipOutputStream, META_NAME, FileTime.from(now));
-
-        } catch (IOException e) {
-            throw new NotaryException(e.getMessage());
         }
     }
 
@@ -387,7 +423,6 @@ class Main {
      * @param instant Timestamp
      * @return TLS Certificate Path
      */
-    @SuppressWarnings("WrapperTypeMayBePrimitive")
     public static List<TlsCertificate> getCertificatePath(URL url, Instant instant) {
         final List<TlsCertificate> path = new LinkedList<>();
         try {
@@ -451,25 +486,5 @@ class Main {
             }
             zipInputStream.closeEntry();
         }
-    }
-
-    /**
-     * @param stream Output
-     */
-    private static void status(OutputStream stream) {
-        final Context ctx = new Context();
-        ctx.setVariable("javaVendor", System.getProperty("java.vendor"));
-        ctx.setVariable("javaVersion", System.getProperty("java.version"));
-        ctx.setVariable("osName", System.getProperty("os.name"));
-        ctx.setVariable("osVersion", System.getProperty("os.version"));
-        ctx.setVariable("title", APP_TITLE);
-        ctx.setVariable("version", APP_VERSION);
-        ctx.setVariable("vendor", APP_VENDOR);
-        ctx.setVariable("dns", APP_DNS);
-        ctx.setVariable("ntp", APP_NTP);
-        ctx.setVariable("tsa", APP_TSA);
-        final TemplateEngine templateEngine = new TemplateEngine();
-        templateEngine.setTemplateResolver(new ClassLoaderTemplateResolver());
-        templateEngine.process("/templates/status.html", ctx, new OutputStreamWriter(stream));
     }
 }
