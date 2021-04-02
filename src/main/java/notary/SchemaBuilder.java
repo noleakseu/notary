@@ -22,7 +22,7 @@ class SchemaBuilder extends Builder {
     private final String $schema = "https://json-schema.org/draft/2020‑12/schema";
 
     @JsonProperty()
-    private final String title = "" + Main.APP_TITLE + " " + Main.APP_VERSION;
+    private final String title = "" + Main.APP_VENDOR + " " + Main.APP_TITLE + " " + Main.APP_VERSION;
 
     @JsonProperty()
     private final String type = "object";
@@ -32,16 +32,8 @@ class SchemaBuilder extends Builder {
 
     static class Properties {
         @JsonProperty()
-        @JsonPropertyDescription("Title")
-        private final StringSchema title = new StringSchema();
-
-        @JsonProperty()
-        @JsonPropertyDescription("Version")
-        private final StringSchema version = new StringSchema();
-
-        @JsonProperty()
-        @JsonPropertyDescription("Vendor")
-        private final StringSchema vendor = new StringSchema();
+        @JsonPropertyDescription("Unique ID")
+        private final StringSchema id = new StringSchema();
 
         @JsonProperty()
         @JsonPropertyDescription("Inspections")

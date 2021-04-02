@@ -12,10 +12,7 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 class CookieInspection implements Inspection {
     private final List<Cookie> firstParty = new LinkedList<>();
@@ -58,9 +55,9 @@ class CookieInspection implements Inspection {
             }
             InetAddress targetIp = proxy.getHostNameResolver().resolve(targetUrl.getHost()).iterator().next();
             if (Main.isFirstParty(this.source, sourceIp, targetUrl, targetIp, !sourcePath.isEmpty() ? sourcePath.get(0) : null, !cache.get(targetUrl.getHost()).isEmpty() ? cache.get(targetUrl.getHost()).get(0) : null)) {
-                Main.distinctCookies(this.firstParty, Main.parseCookieValue(targetUrl, party.getValue()));
+                Main.distinctCookies(this.firstParty, Main.parseCookieValue(targetUrl, party.getValue()), targetUrl);
             } else {
-                Main.distinctCookies(this.thirdParty, Main.parseCookieValue(targetUrl, party.getValue()));
+                Main.distinctCookies(this.thirdParty, Main.parseCookieValue(targetUrl, party.getValue()), targetUrl);
             }
         }
         return null;

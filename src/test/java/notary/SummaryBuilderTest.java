@@ -9,12 +9,13 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.UUID;
 
 public class SummaryBuilderTest {
 
     @Test
     public void build() throws Exception {
-        var report = new SummaryBuilder(SummaryBuilder.Language.en);
+        var report = new SummaryBuilder(UUID.randomUUID(), SummaryBuilder.Language.en);
 
         var first = new Visit("tmp", Device.Type.iPhone, Visit.Type.First, new URL("http://noleaks.eu"), 2);
         Whitebox.setInternalState(first, "startTime", new Date());

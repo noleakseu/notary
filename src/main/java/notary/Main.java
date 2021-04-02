@@ -38,10 +38,7 @@ import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
-import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -51,7 +48,7 @@ import java.util.zip.ZipOutputStream;
 class Main {
     private static final long VISIT_DURATION_SEC = 5;
     private static final int HOURLY_LIMIT = 2;
-    private static final int HISTORY_LIMIT = 5;
+    private static final int HISTORY_LIMIT = 10;
 
     private static final String SNAPSHOT_NAME = "snapshot.zip";
     static final String SCHEMA_NAME = "schema.json";
@@ -174,8 +171,7 @@ class Main {
 
                     zip.delete();
                     snapshots.add(new Snapshot(ctx.queryParam(ARG_URL)));
-                });
-                app.before(ctx -> {
+                }).before(ctx -> {
                     ctx.res.setHeader("Server", "" + APP_TITLE + " " + APP_VERSION);
                     ctx.res.setDateHeader("Date", NtpClock.getInstance().instant().toEpochMilli());
                 });
@@ -191,9 +187,13 @@ class Main {
                     templateEngine.process("/templates/history.html", tpl, new OutputStreamWriter(ctx.res.getOutputStream()));
                 });
                 app.exception(Exception.class, (e, ctx) -> {
-                    snapshots.add(new Snapshot(ctx.queryParam(ARG_URL), e));
                     ctx.res.setStatus(302);
-                    ctx.res.addHeader("Location", "/history");
+                    if (ctx.queryParam(ARG_URL).isEmpty()) {
+                        ctx.res.addHeader("Location", "/");
+                    } else {
+                        snapshots.add(new Snapshot(ctx.queryParam(ARG_URL), e));
+                        ctx.res.addHeader("Location", "/history");
+                    }
                 });
 
                 Runtime.getRuntime().addShutdownHook(new Thread(app::stop));
@@ -226,9 +226,10 @@ class Main {
     public static void snapshot(URL url, Device.Type deviceType, SummaryBuilder.Language language, OutputStream stream) throws Exception {
         try (final ZipOutputStream zipOutputStream = new ZipOutputStream(stream)) {
             // init documentation
-            final Builder jsonMeta = new MetaBuilder();
+            final UUID id = UUID.randomUUID();
+            final Builder jsonMeta = new MetaBuilder(id);
             final Builder jsonSchema = new SchemaBuilder();
-            //final Builder summary = new SummaryBuilder(language);
+            //final Builder summary = new SummaryBuilder(id, language);
 
             // init inspections
             final Inspection visibility = new VisibilityInspection();
@@ -319,7 +320,7 @@ class Main {
      * @param browserCookies Inspected cookies
      * @param cookies        Recorded cookies
      */
-    public static void distinctCookies(List<Cookie> browserCookies, List<org.apache.http.cookie.Cookie> cookies) {
+    public static void distinctCookies(List<Cookie> browserCookies, List<org.apache.http.cookie.Cookie> cookies, URL url) {
         cookies.forEach((cookie) -> {
             for (Cookie item : browserCookies) {
                 if (item.equals(cookie)) {
@@ -327,7 +328,7 @@ class Main {
                     return;
                 }
             }
-            browserCookies.add(new Cookie(cookie));
+            browserCookies.add(new Cookie(url, cookie));
         });
     }
 

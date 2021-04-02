@@ -1,6 +1,5 @@
 package notary;
 
-import org.apache.http.cookie.Cookie;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -9,7 +8,6 @@ import java.net.InetAddress;
 import java.net.URL;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
 
 public class MainTest {
 

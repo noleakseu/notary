@@ -9,6 +9,7 @@ import java.io.Writer;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 
 class SummaryBuilder extends Builder {
     public enum Language {
@@ -16,10 +17,12 @@ class SummaryBuilder extends Builder {
     }
 
     private final Context ctx = new Context();
+    private final String id;
     private final Language language;
     private final List<Visit> visits = new LinkedList<>();
 
-    public SummaryBuilder(Language language) {
+    public SummaryBuilder(UUID id, Language language) {
+        this.id = id.toString();
         this.language = language;
     }
 

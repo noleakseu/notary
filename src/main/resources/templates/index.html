@@ -45,14 +45,14 @@
 
         div {
             font-family: monospace;
-            font-size: 12pt;
+            font-size: 10pt;
             line-height: 2;
             background: rgba(0, 0, 0, 0);
             width: 90vw;
             position: relative;
             top: 10%;
             margin: auto auto 10%;
-            padding: 30px 30px 10px;
+            padding: 10px 10px 10px;
             box-shadow: 0 0 150px -20px rgba(0, 0, 0, 0.5);
             z-index: 3;
         }
@@ -121,28 +121,51 @@
             color: #003399;
             background: #FFCC00;
         }
+
+        .progress {
+            width: 100%;
+            margin: 0 0 5px;
+            background-color: #FFCC00;
+        }
+
+        .progress-bar {
+            display: block;
+            height: 50px;
+            background-color: #003399;
+            animation: width 30s ease-in-out;
+        }
+
+        @keyframes width {
+            0% {
+                width: 0%;
+            }
+            100% {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
 <h1>⚖</h1>
 <div>
-    <form class="header" action="/snapshot" method="get">
+    <form class="header" action="/snapshot" method="get" onsubmit="document.getElementById('submit').style.display = 'none';document.getElementById('progress-bar').className = 'progress-bar';">
         <h2>Digitally signed snapshots of web-pages</h2>
         <fieldset>
-            <input placeholder="https://" name="url" type="text" />
+            <input placeholder="http://test.noleaks.eu/" name="url" type="url"/>
             <select name="device">
                 <option th:each="device : ${devices}" th:value="${device}" value="Kindle" th:text="${device}">
                     Kindle
                 </option>
             </select>
             <select id="language" name="language">
-            <option th:each="language : ${languages}" th:value="${language}" value="en" th:text="${language}">
-                en
-            </option>
-        </select>
+                <option th:each="language : ${languages}" th:value="${language}" value="en" th:text="${language}">
+                    en
+                </option>
+            </select>
         </fieldset>
         <fieldset>
-            <button name="submit" type="submit" id="contact-submit" data-submit="...Sending">Download</button>
+            <button name="submit" type="submit" id="submit">Download</button>
+            <p class="progress"><span id="progress-bar"></span></p>
             <p>Hourly limit: <i th:text="${limit}">1</i></p>
         </fieldset>
     </form>

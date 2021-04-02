@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * https://www.jsonschemavalidator.net
@@ -15,13 +16,7 @@ class MetaBuilder extends Builder {
     private final String $schema = Main.SCHEMA_NAME;
 
     @JsonProperty()
-    private final String title = Main.APP_TITLE;
-
-    @JsonProperty()
-    private final String version = Main.APP_VERSION;
-
-    @JsonProperty()
-    private final String vendor = Main.APP_VENDOR;
+    private final String id;
 
     @JsonProperty()
     @JsonPropertyDescription("Inspections")
@@ -30,6 +25,10 @@ class MetaBuilder extends Builder {
     @JsonProperty()
     @JsonPropertyDescription("Visits")
     private final List<Visit> visits = new LinkedList<>();
+
+    public MetaBuilder(UUID id) {
+        this.id = id.toString();
+    }
 
     @Override
     public MetaBuilder append(Inspection... inspections) {

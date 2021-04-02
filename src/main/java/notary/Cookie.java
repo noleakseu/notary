@@ -2,19 +2,22 @@ package notary;
 
 import com.fasterxml.jackson.annotation.*;
 
+import java.net.URL;
 import java.util.Date;
 
 /**
  * RFC6265
  */
 class Cookie {
+    private final URL url;
     private final String name;
     private final String value;
     private final String domain;
     private Date expiryDate;
     private boolean persistent;
 
-    public Cookie(org.apache.http.cookie.Cookie cookie) {
+    public Cookie(URL url, org.apache.http.cookie.Cookie cookie) {
+        this.url = url;
         this.name = cookie.getName();
         this.value = cookie.getValue();
         this.domain = cookie.getDomain();
@@ -31,6 +34,11 @@ class Cookie {
             this.expiryDate = cookie.getExpiryDate();
             this.persistent = cookie.isPersistent();
         }
+    }
+
+    @JsonPropertyDescription("Resource URL")
+    public URL getUrl() {
+        return url;
     }
 
     @JsonPropertyDescription("Cookie name")
