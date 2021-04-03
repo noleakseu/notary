@@ -380,5 +380,4 @@ jar verified.
     - Slovenian
     - Spanish
     - Swedish
-2. Deploy as a service
-3. Replace NTP with NTS
+2. Replace NTP with NTS
