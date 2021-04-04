@@ -4,7 +4,8 @@ NoLeaks Notary is a tool that takes digitally signed snapshots of web-pages for 
 ## Key features
 - Integrated Chromium browser and WebDriver ver.89.
   <details>
-  NoLeaks Notary employs standard Google's Chromium in fullscreen mode that simulates realistic browsing sessions.
+  NoLeaks Notary employs standard Google's Chromium in fullscreen mode that simulates three realistic browsing sessions: 
+  first visit, returning visit and incognito visit. 
   Each session observed by the proxy which records traffic between the browser and Internet.
   In contrast to Puppeteer, PuppeteerHar, ChromeHarCapturer and other tools that control the browser over high-level API, 
   NoLeaks Notary inspects all traffic, including "invisible" (favicons and requests to Google services), providing consistent digital evidence.

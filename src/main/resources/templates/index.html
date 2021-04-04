@@ -50,7 +50,7 @@
             background: rgba(0, 0, 0, 0);
             width: 90vw;
             position: relative;
-            top: 10%;
+            top: 5vw;
             margin: auto auto 10%;
             padding: 10px 10px 10px;
             box-shadow: 0 0 150px -20px rgba(0, 0, 0, 0.5);
@@ -81,6 +81,7 @@
         }
 
         table {
+            word-break: break-word;
             border: 0;
             border-collapse: collapse;
             width: 100%;
@@ -188,27 +189,27 @@
         </tr>
         <tr>
             <th>Java version</th>
-            <td th:text="${javaVersion}">1.11</td>
+            <td th:text="${javaVersion}">11.0.10</td>
         </tr>
         <tr>
             <th>OS name</th>
-            <td th:text="${osName}">Ubuntu</td>
+            <td th:text="${osName}">Linux</td>
         </tr>
         <tr>
             <th>OS version</th>
-            <td th:text="${osVersion}">20.0</td>
+            <td th:text="${osVersion}">4.15.0-136-generic</td>
         </tr>
         <tr>
             <th>NTP</th>
-            <td th:text="${ntp}">Cloudflare</td>
+            <td th:text="${ntp}">time.cloudflare.com</td>
         </tr>
         <tr>
             <th>DNS</th>
-            <td th:text="${dns}">Cloudflare</td>
+            <td th:text="${dns}">https://cloudflare-dns.com/dns-query</td>
         </tr>
         <tr>
             <th>TSA</th>
-            <td th:text="${tsa}">GlobalSign</td>
+            <td th:text="${tsa}">http://rfc3161timestamp.globalsign.com/advanced</td>
         </tr>
         <tr>
             <th>Origin</th>
