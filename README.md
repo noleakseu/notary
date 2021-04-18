@@ -315,7 +315,7 @@ NoLeaks Notary is a tool that takes digitally signed snapshots of web-pages for 
 
 ## Usage
 Download the latest version from the [Releases](https://github.com/noleakseu/notary/releases/).
-```
+```shell
 $ jarsigner -verify notary.jar
 jar verified.
 
@@ -337,23 +337,40 @@ named arguments:
   -u URL, --url URL      Specify URL (CLI mode only) (default: )
 ```
 Create your own X.509 Certificate for snapshots signing.
-```
+```shell
 $ keytool -genkeypair -alias snapshot -keyalg RSA -keysize 2048 -dname "CN=selfsigned" -validity 7 -storetype PKCS12 -keystore snapshot.p12 -storepass snapshot
 ```
 Take a snapshot in CLI:
-```
+```shell
 $ java -jar notary.jar --keystore snapshot.p12 --storepass snapshot --alias snapshot --url http://test.noleaks.eu
 $ jarsigner -verbose -verify snapshot.zip
 jar verified.
 ```
 Take a snapshot via API:
-```
+```shell
 $ java -jar notary.jar --keystore snapshot.p12 --storepass snapshot --alias snapshot
 # from another console
 $ wget 'http://127.0.0.1:8000/?url=http%3A%2F%2Ftest.noleaks.eu&device=Kindle&language=en' -O snapshot.zip
 $ jarsigner -verbose -verify snapshot.zip
 jar verified.
 ```
+
+## Custom inspections
+Inspection classes implement 4 methods on the Inspection interface:
+```java
+public interface Inspection {
+    String getInspection();
+    void beforeLoad(BrowserUpProxyServer proxy, URL url);
+    void onLoad(ChromeDriver driver);
+    Map<String, byte[]> afterLoad(BrowserUpProxyServer proxy, Visit.Type visitType) throws Exception;
+}
+```
+The last three are the handlers triggered before, upon and after a page-load. 
+The first method exposes the name of the inspection for the reports.
+
+Each Visit launches its own set of the inspections letting you to build any assessment strategy by enabling/disabling
+of the inspections in ```Main::snapshot```. Method ```afterLoad``` can return artifacts of the evidence e.g. screenshots
+to be included into the snapshot.
 
 # Roadmap
 1. Human-readable Evidence Summary in
