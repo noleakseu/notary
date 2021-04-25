@@ -188,7 +188,7 @@ class Main {
                 });
                 app.exception(Exception.class, (e, ctx) -> {
                     ctx.res.setStatus(302);
-                    if (ctx.queryParam(ARG_URL).isEmpty()) {
+                    if (null == ctx.queryParam(ARG_URL) || ctx.queryParam(ARG_URL).isEmpty()) {
                         ctx.res.addHeader("Location", "/");
                     } else {
                         snapshots.add(new Snapshot(ctx.queryParam(ARG_URL), e));

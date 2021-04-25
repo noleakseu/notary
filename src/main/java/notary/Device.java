@@ -30,26 +30,6 @@ class Device {
                 true,
                 false
         ),
-        iPadPro(
-                "iPad Pro landscape",
-                "Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1",
-                1366,
-                1024,
-                2,
-                true,
-                true,
-                true
-        ),
-        Nexus(
-                "Nexus 10",
-                "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 10 Build/MOB31T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3765.0 Safari/537.36",
-                800,
-                1280,
-                2,
-                true,
-                true,
-                false
-        ),
         Kindle(
                 "Kindle Fire HDX landscape",
                 "Mozilla/5.0 (Linux; U; en-us; KFAPWI Build/JDQ39) AppleWebKit/535.19 (KHTML, like Gecko) Silk/3.13 Safari/535.19 Silk-Accelerated=true",
