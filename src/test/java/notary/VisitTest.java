@@ -98,4 +98,17 @@ public class VisitTest {
         Assert.assertEquals(3, inspection.getFirstParty().size());
         Assert.assertEquals(0, inspection.getThirdParty().size());
     }
+
+    @Test
+    public void testIncapsulaProtection() throws Exception {
+        var inspection = new VisibilityInspection();
+        Assert.assertFalse(
+                new Visit("tmp", Device.Type.PC, Visit.Type.Incognito, new URL("https://coursehero.com/"), 10)
+                        .inspect(inspection)
+                        .publish()
+                        .isEmpty()
+        );
+        Assert.assertEquals("image/png", inspection.getArtifacts().get(0).getType());
+        Assert.assertEquals("VisibilityInspection.Incognito.png", inspection.getArtifacts().get(0).getFile());
+    }
 }

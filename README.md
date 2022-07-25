@@ -372,6 +372,10 @@ Each Visit launches its own set of the inspections letting you to build any asse
 of the inspections in ```Main::snapshot```. Method ```afterLoad``` can return artifacts of the evidence e.g. screenshots
 to be included into the snapshot.
 
+## Limitations
+Good anti-bot solutions i.e. _Incapsula_ actively gather meta-data of the browsers and requests in order to filter automated traffic on the web-sites.
+For example, the site shows a stub after changing ```Device``` in ```testIncapsulaProtection```.
+
 # Roadmap
 1. Human-readable Evidence Summary in
     - Bulgarian

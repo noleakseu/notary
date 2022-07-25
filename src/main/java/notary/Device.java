@@ -39,7 +39,17 @@ class Device {
                 true,
                 true,
                 true
-        );
+        ),
+        PC(
+                "Chromium",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36",
+                1920,
+                1080,
+                2,
+                false,
+                false,
+                true
+        );;
 
         private final String name;
         private final String userAgent;

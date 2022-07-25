@@ -53,8 +53,8 @@ class ModalityInspection implements Inspection {
                     .toString()
             );
             this.scrollable = scrollBottomPosition > scrollCurrentPosition;
-            this.screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
         }
+        this.screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
     }
 
     @Override

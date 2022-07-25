@@ -6,7 +6,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.io.BaseEncoding;
+import io.netty.handler.codec.http.HttpObject;
+import org.littleshoot.proxy.HttpFilters;
+import org.littleshoot.proxy.HttpFiltersAdapter;
 import org.littleshoot.proxy.HttpFiltersSourceAdapter;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -165,6 +170,23 @@ class Visit {
                     return Integer.MAX_VALUE;
                 }
             });
+
+            // remove proxy header
+            proxy.addLastHttpFilterFactory(new HttpFiltersSourceAdapter() {
+                @Override
+                public HttpFilters filterRequest(HttpRequest originalRequest) {
+                    return new HttpFiltersAdapter(originalRequest) {
+                        @Override
+                        public HttpResponse proxyToServerRequest(HttpObject httpObject) {
+                            if (httpObject instanceof HttpRequest) {
+                                ((HttpRequest) httpObject).headers().remove("Via");
+                            }
+                            return null;
+                        }
+                    };
+                }
+            });
+
             proxy.setHostNameResolver(new DnsOverHttpsResolver());
             proxy.setMitmDisabled(false);
             proxy.start(0, InetAddress.getByName("127.0.0.1"));
